@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -8,9 +7,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, FileText, CheckCircle, AlertCircle, ArrowRight, Book, ScanEye, BrainCircuit, Image as ImageIcon } from "lucide-react";
 import RepoInput from "./RepoInput";
 import BookViewer from "./BookViewer";
-import { FileUploadDemo } from "./FileUploadDemo";
+import { FileUploadDemo, TaggedFile } from "./FileUploadDemo";
+import { analyzeRepoFiles } from "@/lib/github-loader";
 
 type StepStatus = "idle" | "scanning" | "generating" | "complete";
+
+const DIAGRAM_OPTIONS = [
+    "System Design Architecture Diagram",
+    "DFD Level 0 Diagram",
+    "DFD Level 1 Diagram",
+    "ERD Diagaram",
+    "Sequence Diagram",
+    "Activity Diagram",
+    "Class Diagram",
+    "Component Diagram",
+    "Deployment Diagram"
+];
 
 export default function AnalysisDashboard() {
     const [mainStatus, setMainStatus] = useState<"idle" | "loading_repo" | "analyzing" | "step_flow" | "done" | "error">("idle");
@@ -23,7 +35,7 @@ export default function AnalysisDashboard() {
 
     // Progress State
     const [progress, setProgress] = useState(0);
-    const [scanFile, setScanFile] = useState(""); // File currently being "scanned"
+    const [scanFile, setScanFile] = useState("");
 
     // Step Data Context
     const [context, setContext] = useState({
@@ -32,74 +44,17 @@ export default function AnalysisDashboard() {
         visuals: ""
     });
     const [finalBook, setFinalBook] = useState<any>(null);
-    const [customImages, setCustomImages] = useState<string[]>([]);
-    const [skipAIImages, setSkipAIImages] = useState(false);
+    const [customImages, setCustomImages] = useState<TaggedFile[]>([]);
+
+    // --- STEP 2 (VISUALS) INTERACTIVE STATE ---
+    const [diagramStates, setDiagramStates] = useState<Record<string, { status: "idle" | "loading" | "success" | "error", url?: string }>>({});
 
     // Initial Analysis (Real File Fetching)
     const analyzeFiles = async (repoData: any) => {
-        const filesToAnalyze = repoData.files.filter((f: any) =>
-            // Code files
-            (f.path.endsWith('.ts') || f.path.endsWith('.tsx') || f.path.endsWith('.js') || f.path.endsWith('.jsx') ||
-                f.path.endsWith('.py') || f.path.endsWith('.java') || f.path.endsWith('.go') || f.path.endsWith('.rs') ||
-                f.path.endsWith('.md') || f.path.endsWith('.json') || f.path.endsWith('.css') || f.path.endsWith('.html')) ||
-            // Images
-            (f.path.endsWith('.png') || f.path.endsWith('.jpg') || f.path.endsWith('.jpeg') || f.path.endsWith('.svg') || f.path.endsWith('.webp') || f.path.endsWith('.gif')) ||
-            // Config & Documentation
-            (f.path.toLowerCase() === 'readme') ||
-            (f.path.toLowerCase() === 'dockerfile') ||
-            (f.path.toLowerCase() === 'package.json')
-        ).filter((f: any) =>
-            !f.path.includes('node_modules') &&
-            !f.path.includes('package-lock.json') &&
-            !f.path.includes('yarn.lock') &&
-            !f.path.includes('pnpm-lock.yaml') &&
-            !f.path.includes('dist/') &&
-            !f.path.includes('build/') &&
-            !f.path.includes('.git/') &&
-            !f.path.includes('.next/') &&
-            !f.path.includes('coverage/') &&
-            !f.path.includes('__pycache__') &&
-            !f.path.includes('.venv') &&
-            !f.path.includes('venv/') &&
-            !f.path.includes('.idea/') &&
-            !f.path.includes('.vscode/') &&
-            !f.path.includes('.DS_Store')
-        ).slice(0, 15);
-
-        const analyses = [];
-
-        for (let i = 0; i < filesToAnalyze.length; i++) {
-            const file = filesToAnalyze[i];
-            setScanFile(file.path);
-
-            const isImage = /\.(png|jpg|jpeg|svg|webp|gif)$/i.test(file.path);
-
-            if (isImage) {
-                analyses.push({
-                    path: file.path,
-                    analysis: `[IMAGE FILE AVAILABLE] This is an image file located at ${file.path}. You should verify if it's relevant for architecture (e.g. diagrams) and include it in the documentation using markdown image syntax: ![${file.path.split(' / ').pop()}](${file.path})`
-                });
-            } else {
-                const contentRes = await fetch(`/api/github/content?owner=${repoData.owner}&repo=${repoData.name}&path=${encodeURIComponent(file.path)}`);
-                const contentData = await contentRes.json();
-
-                if (contentRes.ok) {
-                    const analyzeRes = await fetch("/api/analyze/file", {
-                        method: "POST",
-                        body: JSON.stringify({
-                            content: contentData.content,
-                            path: file.path,
-                            language: file.path.split('.').pop()
-                        })
-                    });
-                    const analyzeData = await analyzeRes.json();
-                    if (analyzeRes.ok) {
-                        analyses.push({ path: file.path, analysis: analyzeData.analysis });
-                    }
-                }
-            }
-            setProgress(((i + 1) / filesToAnalyze.length) * 100);
-        }
+        const analyses = await analyzeRepoFiles(repoData, (file, percent) => {
+            setScanFile(file);
+            setProgress(percent);
+        });
         setFileAnalyses(analyses);
         return analyses;
     };
@@ -108,23 +63,19 @@ export default function AnalysisDashboard() {
     const simulateStepScan = async (files: any[]) => {
         setStepStatus("scanning");
         setProgress(0);
-
-        const scanDuration = 2000; // 2 seconds total scan time
+        const scanDuration = 2000;
         const stepTime = scanDuration / files.length;
-
         for (let i = 0; i < files.length; i++) {
             setScanFile(files[i].path);
             setProgress(((i + 1) / files.length) * 100);
-            await new Promise(r => setTimeout(r, Math.min(stepTime, 100))); // Fast but visible
+            await new Promise(r => setTimeout(r, Math.min(stepTime, 100)));
         }
     };
 
+    // Generic Runner for Steps 1, 2 (structure), 4
     const runStep = async (stepNumber: number, currentAnalyses: any[], repoName: string) => {
         try {
-            // 1. Visual Scan
             await simulateStepScan(currentAnalyses);
-
-            // 2. Generate
             setStepStatus("generating");
             setScanFile("Generating Content...");
 
@@ -134,13 +85,21 @@ export default function AnalysisDashboard() {
                     repoName: repoName,
                     fileAnalyses: currentAnalyses,
                     step: stepNumber,
-                    context: context,
-                    customImages: customImages,
-                    skipAIImages: skipAIImages
+                    context: context
                 })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
+
+            if (stepNumber === 1) {
+                setContext(prev => ({ ...prev, textual: data.result }));
+                // REMOVED: setCurrentStep(2);  <-- Manual Advance Only
+            } else if (stepNumber === 2) {
+                setContext(prev => ({ ...prev, structure: data.result }));
+                // REMOVED: setCurrentStep(3);  <-- Manual Advance Only
+            } else if (stepNumber === 4) {
+                return data.result;
+            }
 
             setStepStatus("complete");
             return data.result;
@@ -159,27 +118,20 @@ export default function AnalysisDashboard() {
         setStepStatus("idle");
 
         try {
-            // 1. Fetch Repo
             const repoRes = await fetch(`/api/github/repo?url=${encodeURIComponent(url)}`);
             const repoData = await repoRes.json();
             if (!repoRes.ok) throw new Error(repoData.error);
             setRepoDetails(repoData);
 
-            // 2. Analyze Files (Initial)
             setMainStatus("analyzing");
             const analyses = await analyzeFiles(repoData);
 
-            // 3. Start Step Flow
             setMainStatus("step_flow");
-            setCurrentStep(1); // Ready for Step 1
+            setCurrentStep(1);
 
-            // Generate Step 1 immediately using the fetched data
-            // Note: repoData.name might be the property, or repoData.repo.
-            // Based on previous code it was repoData.repo or repoData.name.
-            // Let's use repoData.name || repoData.repo to be safe.
+            // Auto-run Step 1
             const rName = repoData.name || repoData.repo;
-            const step1Result = await runStep(1, analyses, rName);
-            setContext(prev => ({ ...prev, textual: step1Result }));
+            await runStep(1, analyses, rName);
 
         } catch (err: any) {
             console.error(err);
@@ -188,101 +140,167 @@ export default function AnalysisDashboard() {
         }
     };
 
+    // --- NEW: SINGLE DIAGRAM GENERATION ---
+    const handleGenerateDiagram = async (diagramType: string) => {
+        setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "loading" } }));
 
-    const generateImages = async () => {
-        if (!context.visuals.includes("[[GENERATE_IMAGE:")) return;
-
-        setStepStatus("generating");
-        setScanFile("Generating AI Diagrams...");
-
-        const regex = /\[\[GENERATE_IMAGE:\s*(.*?)\s*\|\s*(.*?)\]\]/g;
-        let match;
-        let newContent = context.visuals;
-
-        // Find all matches first
-        const matches = [];
-        while ((match = regex.exec(context.visuals)) !== null) {
-            matches.push({ full: match[0], title: match[1], prompt: match[2] });
-        }
-
-        for (let i = 0; i < matches.length; i++) {
-            const m = matches[i];
-            try {
-                setScanFile(`Generating ${m.title}...`);
-                setProgress(((i + 1) / matches.length) * 100); // Update progress for image generation
-                const res = await fetch("/api/generate-image", {
-                    method: "POST",
-                    body: JSON.stringify({ prompt: m.prompt })
-                });
-                const data = await res.json();
-
-                if (data.image) {
-                    newContent = newContent.replace(m.full, `![${m.title}](${data.image})`);
-                    // Update state incrementally to show progress
-                    setContext(prev => ({ ...prev, visuals: newContent }));
-                }
-            } catch (e) {
-                console.error("Failed to generate image:", e);
-            }
-        }
-
-        setStepStatus("complete");
-    };
-
-    const handleNextStep = async () => {
         try {
-            setStepStatus("idle");
-            const rName = repoDetails?.name || repoDetails?.repo;
+            const aggregatedContext = fileAnalyses.map((item: any) => `### File: ${item.path}\n${item.analysis}\n`).join("\n\n");
 
-            if (currentStep === 1) {
-                setCurrentStep(2);
-                const res = await runStep(2, fileAnalyses, rName);
-                setContext(prev => ({ ...prev, structure: res }));
-            } else if (currentStep === 2) {
-                setCurrentStep(3);
-                const res = await runStep(3, fileAnalyses, rName);
-                setContext(prev => ({ ...prev, visuals: res }));
-            } else if (currentStep === 3) {
-                // Check if AI images need generation
-                if (context.visuals.includes("[[GENERATE_IMAGE:")) {
-                    // If tags still exist, it means the user clicked "Compile & Bind Book" without generating images.
-                    // We could warn them, or just proceed. For now, let's just proceed.
-                    // The generateImages function is now triggered by a separate button.
-                }
+            const res = await fetch("/api/analyze/diagram", {
+                method: "POST",
+                body: JSON.stringify({
+                    repoName: repoDetails.full_name,
+                    context: aggregatedContext,
+                    diagramType: diagramType
+                })
+            });
 
-                setCurrentStep(4);
-                const res = await runStep(4, fileAnalyses, rName);
-                try {
-                    const bookJson = JSON.parse(res);
-                    setFinalBook(bookJson);
-                    setMainStatus("done");
-                } catch (e) {
-                    throw new Error("Failed to parse final book JSON");
-                }
+            const data = await res.json();
+
+            if (data.success && data.url) {
+                setDiagramStates(prev => ({
+                    ...prev,
+                    [diagramType]: { status: "success", url: data.url }
+                }));
+            } else {
+                setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "error" } }));
             }
-        } catch (err: any) {
-            setError(err.message);
-            setMainStatus("error");
+        } catch (e) {
+            console.error(e);
+            setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "error" } }));
         }
     };
 
-    const hasImageTags = context.visuals.includes("[[GENERATE_IMAGE:");
+    // --- STEP 3 DRAFTING RUNNER ---
+    const runDraftingStep = async () => {
+        try {
+            setStepStatus("generating");
+            setScanFile("Drafting Chapter 3...");
+
+            // Prepare "Generated Diagrams" map
+            const generatedMap: Record<string, string> = {};
+            Object.entries(diagramStates).forEach(([type, state]) => {
+                if (state.status === "success" && state.url) {
+                    generatedMap[type] = state.url;
+                }
+            });
+
+            const res = await fetch("/api/analyze/report", {
+                method: "POST",
+                body: JSON.stringify({
+                    repoName: repoDetails.full_name,
+                    fileAnalyses: fileAnalyses, // Send context for Step 3 drafting
+                    step: 3,
+                    customImages: customImages,
+                    generatedDiagrams: generatedMap,
+                    context: context
+                })
+            });
+
+            if (!res.ok) throw new Error("Drafting failed");
+
+            const data = await res.json();
+            setContext(prev => ({ ...prev, visuals: data.result }));
+            setStepStatus("complete");
+
+        } catch (e: any) {
+            setError(e.message || "Failed to generate draft");
+            setStepStatus("idle");
+        }
+    };
+
+    const handleFinalBind = async () => {
+        try {
+            const rName = repoDetails?.name || repoDetails?.repo;
+            setCurrentStep(4);
+            const res = await runStep(4, fileAnalyses, rName);
+            const bookJson = JSON.parse(res);
+            setFinalBook(bookJson);
+            setMainStatus("done");
+        } catch (e: any) {
+            setError(e.message);
+        }
+    };
+
+    // Render Helper for Diagram Card
+    const renderDiagramCard = (type: string) => {
+        const state = diagramStates[type] || { status: "idle" };
+        const userImagesForType = customImages.filter(img => img.tag === type);
+
+        return (
+            <div key={type} className="bg-neutral-800/50 border border-neutral-700 rounded-xl p-4 flex flex-col h-full hover:border-neutral-600 transition-all shadow-lg hover:shadow-xl">
+                <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-neutral-200 text-sm truncate" title={type}>{type}</h4>
+                    {state.status === "success" && <CheckCircle className="w-4 h-4 text-green-500" />}
+                    {state.status === "error" && <AlertCircle className="w-4 h-4 text-red-500" />}
+                </div>
+
+                <div className="flex-1 bg-neutral-900/50 rounded-lg mb-3 p-2 space-y-2 overflow-y-auto min-h-[120px] max-h-[150px] scrollbar-thin">
+                    {/* User Images */}
+                    {userImagesForType.map((img, idx) => (
+                        <div key={idx} className="relative group rounded-md overflow-hidden border border-blue-500/30">
+                            <img src={img.url} className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute top-1 right-1 bg-blue-600/80 text-[10px] text-white px-1.5 py-0.5 rounded">User</div>
+                        </div>
+                    ))}
+
+                    {/* AI Image */}
+                    {state.status === "success" && state.url && (
+                        <div className="relative group rounded-md overflow-hidden border border-purple-500/30">
+                            <img src={state.url} className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute top-1 right-1 bg-purple-600/80 text-[10px] text-white px-1.5 py-0.5 rounded">AI</div>
+                        </div>
+                    )}
+
+                    {state.status === "loading" && (
+                        <div className="flex flex-col items-center justify-center h-24 text-neutral-500 gap-2">
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                            <span className="text-xs">Generating...</span>
+                        </div>
+                    )}
+                </div>
+
+                <button
+                    onClick={() => handleGenerateDiagram(type)}
+                    disabled={state.status === "loading"}
+                    className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${state.status === "success"
+                        ? "bg-neutral-800 hover:bg-neutral-700 text-neutral-400"
+                        : state.status === "error"
+                            ? "bg-red-900/20 text-red-400 border border-red-500/30 hover:bg-red-900/40"
+                            : "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20"
+                        }`}
+                >
+                    {state.status === "loading" ? "Creating..." : state.status === "success" ? <>Regenerate <BrainCircuit className="w-3 h-3" /></> : state.status === "error" ? <>Retry <BrainCircuit className="w-3 h-3" /></> : <>Generate AI <BrainCircuit className="w-3 h-3" /></>}
+                </button>
+            </div>
+        );
+    };
 
     return (
-        <div className="w-full max-w-5xl mx-auto space-y-12 min-h-screen">
+        <div className="w-full max-w-5xl mx-auto space-y-12 min-h-screen pb-20">
             <div className="text-center space-y-6 pt-12">
                 <motion.h1
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-5xl font-extrabold tracking-tight sm:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400"
                 >
-                    GitHub Book Generator
+                    GitDoc AI
                 </motion.h1>
                 <p className="text-xl text-gray-300 max-w-3xl mx-auto">
                     Turn your codebase into a beautiful, paginated technical book.
                 </p>
             </div>
 
+            {/* ERROR DISPLAY */}
+            {error && (
+                <div className="mt-6 p-4 bg-red-900/20 border border-red-500/50 text-red-400 rounded-lg flex items-center justify-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    {error}
+                </div>
+            )}
+
+            {/* INITIAL URL INPUT */}
             {mainStatus === "idle" && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -293,15 +311,8 @@ export default function AnalysisDashboard() {
                 </motion.div>
             )}
 
-            {error && (
-                <div className="mt-6 p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg flex items-center justify-center gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    {error}
-                </div>
-            )}
-
             {/* PROCESSING UI (Used for Initial Analysis AND Per-Step Scanning/Generating) */}
-            {(mainStatus === "analyzing" || stepStatus === "scanning" || stepStatus === "generating") && (
+            {(mainStatus === "analyzing" || stepStatus === "scanning" || (stepStatus === "generating" && (currentStep === 4 || (!context.visuals && currentStep !== 3)))) && (
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -317,8 +328,14 @@ export default function AnalysisDashboard() {
 
                     <h3 className="text-2xl font-bold text-white mb-2">
                         {mainStatus === "analyzing" && "Analyzing Repository..."}
-                        {stepStatus === "scanning" && `Step ${currentStep}: Scanning Context...`}
-                        {stepStatus === "generating" && `Step ${currentStep}: Generating Chapter...`}
+                        {stepStatus === "scanning" && (
+                            currentStep === 3 ? "Analyzing visual requirements..." : `Step ${currentStep}: Scanning Context...`
+                        )}
+                        {stepStatus === "generating" && (
+                            currentStep === 3 ? "Drafting Visual Assets..." :
+                                currentStep === 4 ? "Compiling Final Book..." :
+                                    `Step ${currentStep}: Generating Chapter...`
+                        )}
                     </h3>
 
                     <p className="text-gray-400 mb-6 font-mono text-sm truncate">
@@ -335,17 +352,20 @@ export default function AnalysisDashboard() {
                 </motion.div>
             )}
 
-            {/* STEP COMPLETION UI (The "Next" Loop) */}
-            {mainStatus === "step_flow" && stepStatus === "complete" && (
-                <div className="max-w-4xl mx-auto mt-12 space-y-8">
-                    {/* Progress Steps Indicator */}
-                    <div className="flex justify-between items-center px-12">
+            {/* STEP PROGRESS INDICATOR */}
+            {mainStatus === "step_flow" && (
+                <div className="max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center px-12 mb-8">
                         {[1, 2, 3, 4].map((s) => (
                             <div key={s} className="flex flex-col items-center gap-2">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${currentStep >= s ? "bg-green-500 text-white" : "bg-gray-700 text-gray-400"}`}>
-                                    {currentStep > s ? <CheckCircle size={16} /> : s}
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all ${currentStep >= s
+                                    ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/20"
+                                    : "bg-gray-800 border border-gray-700 text-gray-400"
+                                    }`}>
+                                    {currentStep > s ? <CheckCircle size={20} /> : s}
                                 </div>
-                                <span className="text-xs text-gray-400 uppercase tracking-widest">
+                                <span className={`text-xs uppercase tracking-widest font-semibold ${currentStep >= s ? "text-blue-400" : "text-gray-600"
+                                    }`}>
                                     {s === 1 && "Vision"}
                                     {s === 2 && "Structure"}
                                     {s === 3 && "Visuals"}
@@ -354,102 +374,136 @@ export default function AnalysisDashboard() {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
 
-                    <div className="bg-gray-900/50 backdrop-blur-md border border-gray-700 rounded-2xl p-8 shadow-2xl">
-                        <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                            <CheckCircle className="text-green-400" />
-                            {currentStep === 1 && "Chapter 1 Drafted: The Vision"}
-                            {currentStep === 2 && "Chapter 2 Drafted: Structure"}
-                            {currentStep === 3 && "Chapter 3 Drafted: Visuals"}
+            {/* MAIN CONTENT for Steps */}
+            {mainStatus === "step_flow" && (stepStatus === "complete" || (currentStep === 3 && !context.visuals)) && (
+                <div className="max-w-5xl mx-auto">
+
+                    <div className="bg-neutral-900/60 backdrop-blur-md border border-neutral-800 rounded-2xl p-8 shadow-2xl">
+
+                        <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                            <CheckCircle className="text-green-400 w-8 h-8" />
+                            {currentStep === 1 && "Chapter 1: The Vision"}
+                            {currentStep === 2 && "Chapter 2: The Structure"}
+                            {currentStep === 3 && (context.visuals ? "Chapter 3: The Visuals" : "Configure Visuals")}
+                            {currentStep === 4 && "Final Book"}
                         </h2>
 
+                        {/* STEP 1 & 2 TEXT CONTENT */}
+                        {(currentStep === 1 || currentStep === 2) && (
+                            <div className="space-y-6">
+                                <div className="prose prose-invert prose-lg max-w-none min-h-[400px] max-h-[60vh] overflow-y-auto custom-scrollbar bg-neutral-950/50 p-6 rounded-xl border border-neutral-800">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {currentStep === 1 ? context.textual : context.structure}
+                                    </ReactMarkdown>
+                                </div>
 
-                        <div className="prose prose-invert prose-lg max-w-none min-h-[500px] max-h-[70vh] overflow-y-auto bg-neutral-900/80 p-10 rounded-xl mb-8 border border-neutral-700 shadow-2xl custom-scrollbar leading-relaxed">
-                            {currentStep === 1 && <ReactMarkdown remarkPlugins={[remarkGfm]}>{context.textual}</ReactMarkdown>}
-                            {currentStep === 2 && <ReactMarkdown remarkPlugins={[remarkGfm]}>{context.structure}</ReactMarkdown>}
-                            {currentStep === 3 && (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        img: ({ node, ...props }) => {
-                                            let src = props.src || "";
-                                            if (src && !src.startsWith("http") && repoDetails) {
-                                                const branch = repoDetails.default_branch || "main";
-                                                // Handle potential leading slash
-                                                const cleanSrc = src.startsWith("/") ? src.slice(1) : src;
-                                                src = `https://raw.githubusercontent.com/${repoDetails.owner.login}/${repoDetails.name}/${branch}/${cleanSrc}`;
-                                            }
-                                            return <img {...props} src={src} className="rounded-lg shadow-lg border border-gray-700 max-w-full h-auto my-4" />;
-                                        }
-                                    }}
-                                >
-                                    {context.visuals}
-                                </ReactMarkdown>
-                            )}
-                        </div>
-
-                        {currentStep === 3 && hasImageTags && (
-                            <button
-                                onClick={generateImages}
-                                className="w-full mb-4 py-4 bg-purple-600 hover:bg-purple-500 rounded-xl text-white font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-purple-500/25"
-                            >
-                                <BrainCircuit className="w-6 h-6 animate-pulse" />
-                                Generate AI Diagrams (Architecture & DFD)
-                            </button>
-                        )}
-
-                        {currentStep === 2 && (
-                            <div className="mb-8 p-6 bg-gray-800/50 rounded-xl border border-gray-700">
-                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <ImageIcon className="text-blue-400" />
-                                    Visual Assets Configuration
-                                </h3>
-
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Upload & Select Custom Images for Documentation
-                                        </label>
-                                        <FileUploadDemo onSelectionChange={setCustomImages} />
-                                    </div>
-
-                                    <div className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                        <input
-                                            type="checkbox"
-                                            id="skipAI"
-                                            checked={skipAIImages}
-                                            onChange={(e) => setSkipAIImages(e.target.checked)}
-                                            className="w-5 h-5 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-800"
-                                        />
-                                        <label htmlFor="skipAI" className="text-gray-200 cursor-pointer select-none">
-                                            Skip AI Image Generation (Use only my uploaded images)
-                                        </label>
-                                    </div>
+                                {/* REVIEW & PROCEED BUTTONS */}
+                                <div className="flex justify-end pt-4 border-t border-neutral-800">
+                                    {currentStep === 1 && context.textual && (
+                                        <button
+                                            onClick={() => {
+                                                setCurrentStep(2);
+                                                runStep(2, fileAnalyses, repoDetails?.name);
+                                            }}
+                                            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-white font-bold text-lg flex items-center gap-3 shadow-xl hover:shadow-blue-500/25 transition-all transform hover:-translate-y-1"
+                                        >
+                                            Proceed to Chapter 2: Structure <ArrowRight className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                    {currentStep === 2 && context.structure && (
+                                        <button
+                                            onClick={() => setCurrentStep(3)} // Just switch to interactive UI
+                                            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-white font-bold text-lg flex items-center gap-3 shadow-xl hover:shadow-blue-500/25 transition-all transform hover:-translate-y-1"
+                                        >
+                                            Proceed to Chapter 3: Visuals <ArrowRight className="w-6 h-6" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        <button
-                            onClick={handleNextStep}
-                            className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-white font-bold text-xl flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-blue-500/25 transform hover:-translate-y-1"
-                        >
-                            {currentStep === 1 && "Start Architecture Analysis"}
-                            {currentStep === 2 && "Generate Diagrams & Visuals"}
-                            {currentStep === 3 && "Compile & Bind Book"}
-                            <ArrowRight className="w-6 h-6" />
-                        </button>
+                        {/* STEP 3 INTERACTIVE GRID (If visuals not generated yet) */}
+                        {currentStep === 3 && !context.visuals && (
+                            <div className="space-y-8 animate-in fade-in zoom-in duration-300">
+
+                                <div className="p-6 bg-blue-900/10 border border-blue-500/20 rounded-xl">
+                                    <h3 className="text-xl font-bold text-blue-100 mb-2 flex items-center gap-2">
+                                        <ImageIcon className="w-5 h-5 text-blue-400" />
+                                        1. Upload & Tag Custom Images
+                                    </h3>
+                                    <p className="text-sm text-blue-200/60 mb-4">Upload your own diagrams or screenshots and tag them to sections.</p>
+                                    <FileUploadDemo onFilesChange={setCustomImages} availableTags={DIAGRAM_OPTIONS} />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-xl font-bold text-purple-100 mb-4 flex items-center gap-2 pl-2">
+                                        <BrainCircuit className="w-5 h-5 text-purple-400" />
+                                        2. Generate AI Diagrams
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {DIAGRAM_OPTIONS.map(type => renderDiagramCard(type))}
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end pt-4">
+                                    <button
+                                        onClick={runDraftingStep}
+                                        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-white font-bold text-lg flex items-center gap-3 shadow-xl hover:shadow-blue-500/25 transition-all transform hover:-translate-y-1"
+                                    >
+                                        Draft Chapter 3 Now <ArrowRight className="w-6 h-6" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 3 COMPLETED: DRAFTED CONTENT */}
+                        {currentStep === 3 && context.visuals && (
+                            <div className="space-y-6">
+                                <div className="prose prose-invert prose-lg max-w-none min-h-[500px] max-h-[70vh] overflow-y-auto bg-neutral-950/80 p-6 rounded-xl border border-neutral-800 shadow-inner custom-scrollbar">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            img: ({ node, ...props }) => (
+                                                <img {...props} className="rounded-lg shadow-lg border border-neutral-700 max-w-full h-auto my-6 mx-auto block" />
+                                            )
+                                        }}
+                                    >
+                                        {context.visuals}
+                                    </ReactMarkdown>
+                                </div>
+                                <div className="flex justify-between items-center bg-neutral-800/50 p-4 rounded-xl border border-neutral-700">
+                                    <button
+                                        onClick={() => setContext(prev => ({ ...prev, visuals: "" }))}
+                                        className="text-sm text-neutral-400 hover:text-white underline decoration-dashed underline-offset-4"
+                                    >
+                                        ← Go Back & Refine Diagrams
+                                    </button>
+                                    <button
+                                        onClick={handleFinalBind}
+                                        className="px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-xl text-white font-bold text-lg flex items-center gap-3 shadow-xl hover:shadow-green-500/25 transition-all transform hover:-translate-y-1"
+                                    >
+                                        Compile Final Book <Book className="w-6 h-6" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             )}
 
-            {mainStatus === "done" && finalBook && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <div className="flex items-center justify-center gap-2 text-green-400 mb-8 p-4 bg-green-900/20 rounded-full w-fit mx-auto border border-green-900/50">
+            {/* STEP 4: FINAL BOOK */}
+            {currentStep === 4 && finalBook && (
+                <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-700">
+                    <div className="flex items-center justify-center gap-3 text-green-400 mb-8 p-4 bg-green-900/20 rounded-full w-fit mx-auto border border-green-900/50">
                         <CheckCircle className="w-6 h-6" />
                         <span className="font-semibold text-lg">Book Generated Successfully</span>
                     </div>
                     <BookViewer bookData={finalBook} repoDetails={repoDetails} />
-                </motion.div>
+                </div>
             )}
         </div>
     );

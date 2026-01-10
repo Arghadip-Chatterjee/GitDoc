@@ -10,7 +10,8 @@ cloudinary.config({
 
 export async function POST(request: Request) {
     try {
-        const { repoName, fileAnalyses, step, context, customImages, skipAIImages } = await request.json();
+        const { repoName, fileAnalyses, step, context, customImages, skipAIImages, selectedDiagrams, existingDiagrams, generatedDiagrams } = await request.json();
+        console.log(`Step ${step} Request.`);
 
         // Basic validation
         if (!fileAnalyses && step === 1) {
@@ -69,147 +70,72 @@ ${aggregatedContext}
 `;
                 break;
 
-            case 3: // Visuals (Mermaid & Images)
+            case 3: // Visuals (Pre-Generated Assets)
                 systemPrompt = "You are a visual thinker and systems designer.";
 
-                const hasCustomImages = customImages && customImages.length > 0;
-                const shouldSkipAI = skipAIImages || hasCustomImages;
-
-                // Context for custom images (always available if they exist)
-                const customImagesContext = hasCustomImages
-                    ? `\n**User Provided Images**: The following images were uploaded by the user. You MUST incorporate them into the documentation. Create a section called "## Gallery of User Assets" and display them:\n${customImages.map((url: string) => `- ![User Image](${url})`).join('\n')}\n`
-                    : "";
-
-                let visualInstructions = "";
-                let generatedDiagramsContext = "";
-
-                if (shouldSkipAI) {
-                    // --- PATH A: USER ASSETS ONLY ---
-                    visualInstructions = `
-1. **User Assets Only**:
-   - Use the "User Provided Images" listed below. Display them prominently.
-   - **DO NOT** generate a Mermaid diagram.
-   - **DO NOT** suggest new AI images.
-   - **DO NOT** look for or include any images from the repository.
-`;
-                } else {
-                    // --- PATH B: AI DIAGRAM GENERATION (Mermaid -> DALL-E -> Cloudinary) ---
-                    try {
-                        console.log("Generating Mermaid Code...");
-                        // 1. Generate Mermaid Code
-                        const mermaidPrompt = `
-Analyze the codebase context and generate Mermaid.js code for two diagrams:
-1. **System Architecture**: High-level component interaction.
-2. **Data Flow Diagram (DFD)**: How data moves through the system.
-
-Return ONLY a JSON object:
-{
-  "systemArchitecture": "graph TD...",
-  "dataFlow": "graph TD..."
-}
-`;
-                        const mermaidRes = await openai.chat.completions.create({
-                            messages: [
-                                { role: "system", content: "You are a Mermaid.js expert." },
-                                { role: "user", content: `Context:\n${aggregatedContext}\n\n${mermaidPrompt}` }
-                            ],
-                            model: "gpt-4o-mini",
-                            response_format: { type: "json_object" }
-                        });
-
-                        const mermaidJson = JSON.parse(mermaidRes.choices[0].message.content || "{}");
-                        const diagrams = [
-                            { type: "System Architecture", code: mermaidJson.systemArchitecture },
-                            { type: "Data Flow Diagram", code: mermaidJson.dataFlow }
-                        ];
-
-                        const uploadedUrls: string[] = [];
-
-                        console.log("Visualizing with DALL-E...");
-                        // 2. Generate DALL-E Image & Upload to Cloudinary
-                        for (const diag of diagrams) {
-                            if (!diag.code) continue;
-
-                            // DALL-E Prompt
-                            const imagePrompt = `
-Create a professional, high-fidelity technical diagram based on this structure. 
-Type: ${diag.type}. 
-Style: Clean, minimalist, white background, like a polished software architecture diagram. 
-Structure details: ${diag.code.slice(0, 800)} 
-(Visualize the nodes and connections described).
-`;
-                            // Using GPT-5 Responses API as requested
-                            const imageRes: any = await (openai as any).responses.create({
-                                model: "gpt-5",
-                                input: imagePrompt,
-                                tools: [{ type: "image_generation" }],
-                            });
-
-                            // Adapting extraction: User didn't specify return format. 
-                            // Assuming it might be direct property or similar to previous. 
-                            // Logging for debugging if it fails.
-                            console.log("GPT-5 Image Response:", JSON.stringify(imageRes, null, 2));
-
-                            // Trying to locate URL in likely paths
-                            const dalleUrl = imageRes.image || imageRes.data?.[0]?.url || imageRes.output?.[0]?.image || imageRes.choices?.[0]?.message?.content;
-
-                            if (dalleUrl) {
-                                // 3. Upload to Cloudinary (DALL-E URLs expire, Cloudinary is perm)
-                                const uploadRes = await cloudinary.uploader.upload(dalleUrl, {
-                                    folder: "gitdoc_generated_diagrams",
-                                    public_id: `${repoName.replace('/', '_')}_${diag.type.replace(/\s/g, '_')}_${Date.now()}`
-                                });
-                                uploadedUrls.push(`- **${diag.type}**:\n  ![${diag.type}](${uploadRes.secure_url})`);
-                            }
-                        }
-
-                        if (uploadedUrls.length > 0) {
-                            generatedDiagramsContext = `
-\n**AI Generated System Diagrams**:
-The following high-fidelity diagrams have been generated for you. You MUST display them in the "System Diagram" section.
-${uploadedUrls.join('\n')}
-`;
-                            visualInstructions = `
-1. **System Diagrams**:
-   - Use the "AI Generated System Diagrams" provided below.
-   - Display them prominently in a section called "## System Architecture & Design".
-   - You do NOT need to write new Mermaid code, just embed these images.
-
-2. **AI Image Generation Suggestions**:
-   - Suggest 3 additional high-fidelity AI images (e.g. for marketing/cover).
-   - **Tag Format**: \`[[GENERATE_IMAGE: Title | Detailed Prompt]]\`
-`;
-                        } else {
-                            // Fallback if image gen fails
-                            visualInstructions = "Failed to generate images. Please describe the architecture in text.";
-                        }
-
-                    } catch (err) {
-                        console.error("AI Diagram Gen Error:", err);
-                        visualInstructions = "Error generating diagrams. Please simply describe the system architecture textually.";
-                    }
+                // Group user images by tag
+                const userImagesByTag: Record<string, any[]> = {};
+                if (customImages && Array.isArray(customImages)) {
+                    customImages.forEach((img: any) => {
+                        const tag = img.tag || "Other";
+                        if (!userImagesByTag[tag]) userImagesByTag[tag] = [];
+                        userImagesByTag[tag].push(img);
+                    });
                 }
+
+                // Construct a unified "Visual Inventory" for the LLM
+                let visualInventory = "### Visual Asset Inventory\n\n";
+
+                // Get all unique sections (from keys of both generators)
+                const allSections = new Set([
+                    ...Object.keys(userImagesByTag),
+                    ...Object.keys(generatedDiagrams || {})
+                ]);
+
+                allSections.forEach(section => {
+                    visualInventory += `#### Section: ${section}\n`;
+
+                    // 1. User Images first
+                    if (userImagesByTag[section]) {
+                        userImagesByTag[section].forEach((img: any) => {
+                            visualInventory += `- [User Image] ${img.originalName}: ![${img.originalName}](${img.url})\n`;
+                        });
+                    }
+
+                    // 2. AI Generated Diagrams
+                    if (generatedDiagrams && generatedDiagrams[section]) {
+                        visualInventory += `- [AI Diagram] ${section}: ![${section}](${generatedDiagrams[section]})\n`;
+                    }
+                    visualInventory += "\n";
+                });
+
+                if (allSections.size === 0) {
+                    visualInventory += "(No visual assets present. Describe the architecture textually.)";
+                }
+
+                const visualInstructions = `
+1. **Goal**: Write "Chapter 3: The Visuals".
+2. **Usage**: Use the "Visual Asset Inventory" provided above.
+3. **Structure**: 
+   - Create a Markdown Header (##) for each Section present in the inventory.
+   - Write a brief 2-3 sentence introduction for that diagram/visual.
+   - **Embed the images** using the exact Markdown links provided in the inventory.
+   - If a section has both User and AI images, display both and compare them or explain them sequentially.
+   - **DO NOT** generate new Mermaid code. Use the provided images only.
+`;
 
                 userPrompt = `
 Repository Name: ${repoName}
 
-Write "Chapter 3: The Blueprint".
-This chapter visualizes the system.
+Write "Chapter 3: The Visuals".
+This chapter uses diagrams to explain the system.
 
-**Requirements**:
 ${visualInstructions}
 
-${generatedDiagramsContext}
+${visualInventory}
 
-${customImagesContext}
-
-**Analysis Context**:
+Context:
 ${aggregatedContext}
-
-**CRITICAL FORMATTING RULES**:
-- **ALWAYS** use Markdown Headers (##) for section titles.
-- **Images**: Always use \`![Alt](url)\`.
-- **Lists**: Use proper markdown lists.
 `;
                 break;
 
@@ -251,20 +177,13 @@ Structure:
                 { role: "user", content: userPrompt }
             ],
             model: "gpt-4o-mini",
-            response_format: step === 4 ? { type: "json_object" } : { type: "text" }
         });
 
-        let result = completion.choices[0].message.content || "";
-
-        // Cleanup: Remove markdown code blocks if the LLM wrapped the output
-        if (step !== 4) {
-            result = result.replace(/^```markdown\s*/, "").replace(/^```\s*/, "").replace(/```$/, "");
-        }
-
-        return NextResponse.json({ result });
+        const result = completion.choices[0].message.content;
+        return NextResponse.json({ result: result });
 
     } catch (error: any) {
-        console.error("Report Generation Error:", error);
+        console.error("Analysis Error:", error);
         return NextResponse.json(
             { error: error.message || "Failed to generate report" },
             { status: 500 }
