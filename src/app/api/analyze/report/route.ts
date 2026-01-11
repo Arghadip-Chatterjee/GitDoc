@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
 import { v2 as cloudinary } from 'cloudinary';
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -10,10 +13,19 @@ cloudinary.config({
 
 export async function POST(request: Request) {
     try {
-        const { repoName, fileAnalyses, step, context, customImages, skipAIImages, selectedDiagrams, existingDiagrams, generatedDiagrams } = await request.json();
-        console.log(`Step ${step} Request.`);
+        const { repoUrl, fileAnalyses, step, context, customImages, skipAIImages, selectedDiagrams, existingDiagrams, generatedDiagrams } = await request.json();
+        console.log(`Step ${step} Request. Repo URL: ${repoUrl || 'undefined'}`);
+
+        // Get user session
+        const session = await getServerSession(authOptions);
+        const userId = session?.user ? (session.user as any).id : null;
 
         // Basic validation
+        // Repo name is optional for intermediate steps if we just want generation
+        if (!repoUrl && step === 1) {
+            return NextResponse.json({ error: "Repository name is required for initialization" }, { status: 400 });
+        }
+
         if (!fileAnalyses && step === 1) {
             return NextResponse.json({ error: "Invalid file analyses data" }, { status: 400 });
         }
@@ -23,6 +35,120 @@ export async function POST(request: Request) {
 ${item.analysis}
 `).join("\n\n") : "";
 
+        let analysis = null;
+
+        // Step 1: Initialize Repository and Analysis
+        if (step === 1) {
+            // Parse repository information from user input
+            let owner = 'unknown';
+            let repo = 'unknown';
+            let originalUrl = repoUrl || ''; // Store the exact input from user
+
+            // Extract owner/repo from different URL formats WITHOUT REGEX
+            if (repoUrl) {
+                // Remove trailing slashes and .git
+                const cleanUrl = repoUrl.trim().replace(/\.git$/, '').replace(/\/$/, '');
+
+                if (cleanUrl.includes('github.com')) {
+                    // Full URL format: https://github.com/owner/repo
+                    // Split by 'github.com/' and take the part after it
+                    const afterGithub = cleanUrl.split('github.com/')[1];
+                    if (afterGithub) {
+                        const parts = afterGithub.split('/');
+                        if (parts.length >= 2) {
+                            owner = parts[0];
+                            repo = parts[1].split('?')[0].split('#')[0]; // Remove query params and hash
+                        } else if (parts.length === 1) {
+                            repo = parts[0];
+                        }
+                    }
+                    originalUrl = repoUrl; // Keep the full URL as entered
+                } else if (cleanUrl.includes('/') && !cleanUrl.includes('http')) {
+                    // Format: owner/repo (without http/https)
+                    const parts = cleanUrl.split('/');
+                    owner = parts[0];
+                    repo = parts[1] || 'unknown';
+                    originalUrl = `https://github.com/${owner}/${repo}`;
+                } else {
+                    // Just repo name
+                    repo = cleanUrl;
+                    originalUrl = `https://github.com/unknown/${repo}`;
+                }
+            }
+
+            // Create or find Repository - store the ORIGINAL URL
+            const repository = await prisma.repository.upsert({
+                where: {
+                    url: originalUrl // Use URL as unique identifier
+                },
+                update: {
+                    name: repo // Update name if URL exists
+                },
+                create: {
+                    name: repo,
+                    url: originalUrl // Store the original URL as entered by user
+                }
+            });
+
+            // Create new Analysis for this repository (linked to user if authenticated)
+            analysis = await prisma.analysis.create({
+                data: {
+                    repositoryId: repository.id,
+                    userId: userId, // Link to authenticated user
+                    status: "processing",
+                    step: 1,
+                    fileContext: aggregatedContext
+                }
+            });
+
+        } else {
+            // Steps 2-4: Find existing Analysis without touching Repository
+            // We need to find the most recent active analysis
+            // Ideally, frontend should pass analysisId, but for now we use this heuristic
+
+            if (repoUrl) {
+                // Try to find repository by URL
+                const repository = await prisma.repository.findUnique({
+                    where: {
+                        url: repoUrl
+                    }
+                });
+
+                if (repository) {
+                    analysis = await prisma.analysis.findFirst({
+                        where: {
+                            repositoryId: repository.id,
+                            status: { in: ["pending", "processing"] }
+                        },
+                        orderBy: { updatedAt: 'desc' }
+                    });
+                }
+            } else {
+                // Fallback: Find most recent analysis
+                analysis = await prisma.analysis.findFirst({
+                    where: {
+                        status: { in: ["pending", "processing"] }
+                    },
+                    orderBy: { updatedAt: 'desc' }
+                });
+            }
+
+            // Update existing analysis if found
+            if (analysis) {
+                analysis = await prisma.analysis.update({
+                    where: { id: analysis.id },
+                    data: {
+                        step: step,
+                        architectureContext: step >= 2 && context
+                            ? (typeof context === 'string' ? context : JSON.stringify(context))
+                            : analysis.architectureContext
+                    }
+                });
+            } else {
+                console.warn(`No active analysis found for step ${step}. Proceeding without DB update.`);
+            }
+        }
+
         let systemPrompt = "You are a senior technical writer.";
         let userPrompt = "";
 
@@ -30,7 +156,7 @@ ${item.analysis}
             case 1: // Textual Analysis (Broad)
                 systemPrompt = "You are a technical author writing a best-selling book on software architecture.";
                 userPrompt = `
-Repository Name: ${repoName}
+Repository Name: ${repoUrl}
 
 Analyze the provided code context and write "Chapter 1: The Vision".
 This chapter must be written in a broad, engaging, and narrative style, suitable for a technical book.
@@ -52,7 +178,7 @@ ${aggregatedContext}
             case 2: // Structure & Tree (Deep Dive)
                 systemPrompt = "You are a software architect explaining the system internals.";
                 userPrompt = `
-Repository Name: ${repoName}
+Repository Name: ${repoUrl}
 
 Write "Chapter 2: The Structure".
 This chapter focuses on the internal organization and architectural decisions.
@@ -104,7 +230,10 @@ ${aggregatedContext}
 
                     // 2. AI Generated Diagrams
                     if (generatedDiagrams && generatedDiagrams[section]) {
-                        visualInventory += `- [AI Diagram] ${section}: ![${section}](${generatedDiagrams[section]})\n`;
+                        const diagramUrl = typeof generatedDiagrams[section] === 'string'
+                            ? generatedDiagrams[section]
+                            : generatedDiagrams[section].url;
+                        visualInventory += `- [AI Diagram] ${section}: ![${section}](${diagramUrl})\n`;
                     }
                     visualInventory += "\n";
                 });
@@ -125,7 +254,7 @@ ${aggregatedContext}
 `;
 
                 userPrompt = `
-Repository Name: ${repoName}
+Repository Name: ${repoUrl}
 
 Write "Chapter 3: The Visuals".
 This chapter uses diagrams to explain the system.
@@ -144,7 +273,7 @@ ${aggregatedContext}
                 // NOTE: We DO NOT include 'aggregatedContext' here to avoid token limits. 
                 // We only need the previous chapters.
                 userPrompt = `
-Repository Name: ${repoName}
+Repository Name: ${repoUrl}
 
 Your task is to compile the previous chapters into a final JSON structure for our Book Reader application.
 
@@ -157,7 +286,7 @@ Your task is to compile the previous chapters into a final JSON structure for ou
 Return ONLY a valid JSON object. Do not include markdown formatting around the JSON.
 Structure:
 {
-  "title": "The Semantic Architecture of ${repoName}",
+  "title": "The Semantic Architecture of ${repoUrl}",
   "chapters": [
     { "title": "The Vision", "content": "...content from Step 1..." },
     { "title": "The Structure", "content": "...content from Step 2..." },
@@ -180,6 +309,66 @@ Structure:
         });
 
         const result = completion.choices[0].message.content;
+
+        // Store diagrams in database (Step 3 - Visuals)
+        if (step === 3 && analysis) {
+            // 1. Store custom user-uploaded images
+            if (customImages && Array.isArray(customImages)) {
+                for (const customImage of customImages) {
+                    await prisma.diagram.create({
+                        data: {
+                            analysisId: analysis.id,
+                            type: customImage.tag || "Custom Upload",
+                            tag: customImage.tag || "user-upload",
+                            mermaidCode: "",
+                            imageUrl: customImage.url
+                        }
+                    });
+                }
+            }
+
+            // 2. Store AI-generated diagrams with mermaid code
+            if (generatedDiagrams) {
+                // generatedDiagrams is an object/map, not an array
+                const diagramEntries = Object.entries(generatedDiagrams || {});
+
+                for (const [type, diagramData] of diagramEntries) {
+                    // Extract URL and code from object structure
+                    const imageUrl = typeof diagramData === 'string' ? diagramData : (diagramData as any).url;
+                    const mermaidCode = typeof diagramData === 'string' ? "" : ((diagramData as any).code || "");
+
+                    await prisma.diagram.create({
+                        data: {
+                            analysisId: analysis.id,
+                            type: type,
+                            tag: type,
+                            mermaidCode: mermaidCode,
+                            imageUrl: imageUrl
+                        }
+                    });
+                }
+            }
+        }
+
+        // Store final report in database (Step 4 - Book)
+        if (step === 4 && analysis && result) {
+            await prisma.report.create({
+                data: {
+                    analysisId: analysis.id,
+                    markdown: result
+                }
+            });
+
+            // Mark analysis as completed
+            await prisma.analysis.update({
+                where: { id: analysis.id },
+                data: {
+                    status: "completed",
+                    completedAt: new Date()
+                }
+            });
+        }
+
         return NextResponse.json({ result: result });
 
     } catch (error: any) {

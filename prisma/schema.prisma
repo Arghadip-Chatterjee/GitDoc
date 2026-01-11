@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  name      String?
+  password  String   // Hashed password
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  analyses   Analysis[]
+  interviews Interview[]
+
+  @@map("users")
+}
+
+// Repository information
+model Repository {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  url       String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  analyses  Analysis[]
+  interviews Interview[]
+
+  @@map("repositories")
+}
+
+// Document generation analysis session
+model Analysis {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  repositoryId String   @db.ObjectId
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  
+  userId       String?  @db.ObjectId
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status       String   // "pending", "processing", "completed", "failed"
+  step         Int      @default(1) // Current step (1-4)
+  
+  fileContext         String?  @db.String // File analysis context
+  architectureContext String?  @db.String // Architecture analysis
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+  
+  diagrams     Diagram[]
+  reports      Report[]
+
+  @@map("analyses")
+}
+
+// Generated diagrams
+model Diagram {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  analysisId String   @db.ObjectId
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  type       String   // "architecture", "dataflow", "sequence", etc.
+  tag        String?  // User-defined tag
+  
+  mermaidCode String  @db.String
+  imageUrl    String? // Cloudinary URL
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("diagrams")
+}
+
+// Final generated reports
+model Report {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  analysisId String   @db.ObjectId
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  markdown   String   @db.String
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("reports")
+}
+
+// Interview sessions
+model Interview {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  repositoryId String   @db.ObjectId
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  
+  userId       String?  @db.ObjectId
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status       String   // "active", "summarizing", "completed", "failed"
+  duration     Int?     // Duration in seconds
+  
+  fileContext         String?  @db.String
+  architectureContext String?  @db.String
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  completedAt  DateTime?
+  
+  feedback     InterviewFeedback?
+
+  @@map("interviews")
+}
+
+// AI-generated interview feedback
+model InterviewFeedback {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  interviewId String   @unique @db.ObjectId
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  
+  feedback    String?  @db.String // Nullable since feedback might not be generated yet
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("interview_feedback")
+}

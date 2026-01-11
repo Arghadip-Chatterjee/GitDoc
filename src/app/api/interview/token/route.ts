@@ -1,10 +1,60 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
     try {
-        const { repoName, fileContext, architectureContext } = await request.json();
+        const { repoName: repoNameInput, fileContext, architectureContext } = await request.json();
 
-        // 1. Construct the System Instructions for the Interviewer
+        // Get user session
+        const session = await getServerSession(authOptions);
+        const userId = session?.user ? (session.user as any).id : null;
+
+        // Parse repository name from URL
+        let repoName = repoNameInput;
+        let repoUrl = repoNameInput;
+
+        // Extract repo name from URL if it's a full URL
+        if (repoUrl.includes('github.com')) {
+            const urlParts = repoUrl.trim().replace(/\.git$/, '').replace(/\/$/, '').split('/');
+            repoName = urlParts[urlParts.length - 1] || repoNameInput;
+        } else if (repoUrl.includes('/')) {
+            // Format: owner/repo
+            const parts = repoUrl.split('/');
+            repoName = parts[1] || repoNameInput;
+            repoUrl = `https://github.com/${repoUrl}`;
+        } else {
+            // Just repo name
+            repoUrl = `https://github.com/unknown/${repoNameInput}`;
+        }
+
+        // 1. Create or find Repository in database
+        const repository = await prisma.repository.upsert({
+            where: {
+                url: repoUrl // Use URL as unique identifier
+            },
+            update: {
+                name: repoName
+            },
+            create: {
+                name: repoName,
+                url: repoUrl
+            }
+        });
+
+        // 2. Create Interview record (linked to user if authenticated)
+        const interview = await prisma.interview.create({
+            data: {
+                repositoryId: repository.id,
+                userId: userId, // Link to authenticated user
+                status: "active",
+                fileContext: fileContext,
+                architectureContext: architectureContext
+            }
+        });
+
+        // 3. Construct the System Instructions for the Interviewer
         const instructions = `
 You are a senior engineering manager conducting a highly technical mock interview.
 The candidate is the author of the GitHub repository: "${repoName}".
@@ -37,7 +87,7 @@ ${architectureContext}
 **Tone**: Professional, inquisitive, direct, but encouraging. 
         `.trim();
 
-        // 2. Call OpenAI to create a Realtime Session (Ephemeral Token)
+        // 4. Call OpenAI to create a Realtime Session (Ephemeral Token)
         const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
             method: "POST",
             headers: {
@@ -53,13 +103,21 @@ ${architectureContext}
 
         if (!response.ok) {
             const error = await response.text();
+            // Update interview status to failed
+            await prisma.interview.update({
+                where: { id: interview.id },
+                data: { status: "failed" }
+            });
             throw new Error(`OpenAI API Error: ${error}`);
         }
 
         const data = await response.json();
 
-        // 3. Return the ephemeral token to the client
-        return NextResponse.json(data);
+        // 5. Return the ephemeral token AND interview ID to the client
+        return NextResponse.json({
+            ...data,
+            interviewId: interview.id
+        });
 
     } catch (error: any) {
         console.error("Token generation error:", error);

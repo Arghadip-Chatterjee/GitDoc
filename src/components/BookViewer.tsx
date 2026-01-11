@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, BookOpen, List } from "lucide-react";
+import Image from "next/image";
 
 interface Chapter {
     title: string;
@@ -127,7 +128,7 @@ export default function BookViewer({ bookData, repoDetails }: BookViewerProps) {
                                             const cleanSrc = src.startsWith("/") ? src.slice(1) : src;
                                             src = `https://raw.githubusercontent.com/${repoDetails.owner.login}/${repoDetails.name}/${branch}/${cleanSrc}`;
                                         }
-                                        return <img {...props} src={src} className="rounded-lg shadow-lg border border-gray-700 max-w-full h-auto my-4 mx-auto" />;
+                                        return <Image {...props} src={src} alt={props.alt || ""} width={800} height={600} className="rounded-lg shadow-lg border border-gray-700 max-w-full h-auto my-4 mx-auto" />;
                                     }
                                 }}
                             >

@@ -58,7 +58,7 @@ export default function InterviewPage() {
             const archRes = await fetch("/api/analyze/report", {
                 method: "POST",
                 body: JSON.stringify({
-                    repoName: `${owner}/${name}`,
+                    repoUrl: repoUrl, // Send the full URL
                     fileAnalyses: fileAnalyses,
                     step: 2, // Architecture Step
                     context: { textual: "", structure: "", visuals: "" } // Initial context

@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
+import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
     try {
-        const { transcript, repoName } = await request.json();
+        const { transcript, repoName, interviewId } = await request.json();
 
         if (!transcript || !Array.isArray(transcript)) {
             return NextResponse.json({ error: "Invalid transcript data" }, { status: 400 });
+        }
+
+        if (!interviewId) {
+            return NextResponse.json({ error: "Interview ID is required" }, { status: 400 });
+        }
+
+        // 1. Verify interview exists
+        const interview = await prisma.interview.findUnique({
+            where: { id: interviewId }
+        });
+
+        if (!interview) {
+            return NextResponse.json({ error: "Interview not found" }, { status: 404 });
         }
 
         const consolidatedTranscript = transcript.join("\n");
@@ -29,6 +43,7 @@ Include the following sections:
 5. **Final Rating**: A score out of 10 with a brief justification.
 `;
 
+        // 2. Generate feedback
         const completion = await openai.chat.completions.create({
             messages: [
                 { role: "system", content: systemPrompt },
@@ -38,6 +53,26 @@ Include the following sections:
         });
 
         const feedback = completion.choices[0].message.content;
+
+        // 3. Store feedback and update interview status
+        await prisma.interviewFeedback.create({
+            data: {
+                interviewId: interviewId,
+                feedback: feedback || ""
+            }
+        });
+
+        // Calculate duration
+        const duration = Math.floor((new Date().getTime() - interview.createdAt.getTime()) / 1000);
+
+        await prisma.interview.update({
+            where: { id: interviewId },
+            data: {
+                status: "completed",
+                completedAt: new Date(),
+                duration: duration
+            }
+        });
 
         return NextResponse.json({ result: feedback });
 

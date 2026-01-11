@@ -9,6 +9,7 @@ import RepoInput from "./RepoInput";
 import BookViewer from "./BookViewer";
 import { FileUploadDemo, TaggedFile } from "./FileUploadDemo";
 import { analyzeRepoFiles } from "@/lib/github-loader";
+import Image from "next/image";
 
 type StepStatus = "idle" | "scanning" | "generating" | "complete";
 
@@ -32,6 +33,7 @@ export default function AnalysisDashboard() {
     const [error, setError] = useState("");
     const [repoDetails, setRepoDetails] = useState<any>(null);
     const [fileAnalyses, setFileAnalyses] = useState<any[]>([]);
+    const [originalRepoUrl, setOriginalRepoUrl] = useState(""); // Store original user input URL
 
     // Progress State
     const [progress, setProgress] = useState(0);
@@ -73,7 +75,7 @@ export default function AnalysisDashboard() {
     };
 
     // Generic Runner for Steps 1, 2 (structure), 4
-    const runStep = async (stepNumber: number, currentAnalyses: any[], repoName: string) => {
+    const runStep = async (stepNumber: number, currentAnalyses: any[], repoUrl: string) => {
         try {
             await simulateStepScan(currentAnalyses);
             setStepStatus("generating");
@@ -82,7 +84,7 @@ export default function AnalysisDashboard() {
             const res = await fetch("/api/analyze/report", {
                 method: "POST",
                 body: JSON.stringify({
-                    repoName: repoName,
+                    repoUrl: repoUrl, // Send original URL
                     fileAnalyses: currentAnalyses,
                     step: stepNumber,
                     context: context
@@ -116,6 +118,7 @@ export default function AnalysisDashboard() {
         setRepoDetails(null);
         setCurrentStep(0);
         setStepStatus("idle");
+        setOriginalRepoUrl(url); // Store the original URL from input box
 
         try {
             const repoRes = await fetch(`/api/github/repo?url=${encodeURIComponent(url)}`);
@@ -129,9 +132,8 @@ export default function AnalysisDashboard() {
             setMainStatus("step_flow");
             setCurrentStep(1);
 
-            // Auto-run Step 1
-            const rName = repoData.name || repoData.repo;
-            await runStep(1, analyses, rName);
+            // Auto-run Step 1 with original URL from input box
+            await runStep(1, analyses, url);
 
         } catch (err: any) {
             console.error(err);
@@ -150,7 +152,7 @@ export default function AnalysisDashboard() {
             const res = await fetch("/api/analyze/diagram", {
                 method: "POST",
                 body: JSON.stringify({
-                    repoName: repoDetails.full_name,
+                    repoName: repoDetails.html_url || repoDetails.full_name,
                     context: aggregatedContext,
                     diagramType: diagramType
                 })
@@ -161,7 +163,7 @@ export default function AnalysisDashboard() {
             if (data.success && data.url) {
                 setDiagramStates(prev => ({
                     ...prev,
-                    [diagramType]: { status: "success", url: data.url }
+                    [diagramType]: { status: "success", url: data.url, code: data.code }
                 }));
             } else {
                 setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "error" } }));
@@ -178,18 +180,21 @@ export default function AnalysisDashboard() {
             setStepStatus("generating");
             setScanFile("Drafting Chapter 3...");
 
-            // Prepare "Generated Diagrams" map
-            const generatedMap: Record<string, string> = {};
+            // Prepare "Generated Diagrams" map with both URL and code
+            const generatedMap: Record<string, { url: string, code: string }> = {};
             Object.entries(diagramStates).forEach(([type, state]) => {
                 if (state.status === "success" && state.url) {
-                    generatedMap[type] = state.url;
+                    generatedMap[type] = {
+                        url: state.url,
+                        code: (state as any).code || ""
+                    };
                 }
             });
 
             const res = await fetch("/api/analyze/report", {
                 method: "POST",
                 body: JSON.stringify({
-                    repoName: repoDetails.full_name,
+                    repoUrl: originalRepoUrl,
                     fileAnalyses: fileAnalyses, // Send context for Step 3 drafting
                     step: 3,
                     customImages: customImages,
@@ -212,9 +217,9 @@ export default function AnalysisDashboard() {
 
     const handleFinalBind = async () => {
         try {
-            const rName = repoDetails?.name || repoDetails?.repo;
+            const rName = repoDetails?.html_url || repoDetails?.full_name || repoDetails?.name;
             setCurrentStep(4);
-            const res = await runStep(4, fileAnalyses, rName);
+            const res = await runStep(4, fileAnalyses, originalRepoUrl);
             const bookJson = JSON.parse(res);
             setFinalBook(bookJson);
             setMainStatus("done");
@@ -240,7 +245,7 @@ export default function AnalysisDashboard() {
                     {/* User Images */}
                     {userImagesForType.map((img, idx) => (
                         <div key={idx} className="relative group rounded-md overflow-hidden border border-blue-500/30">
-                            <img src={img.url} className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <Image src={img.url} width={100} height={100} alt="User Image" className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-1 right-1 bg-blue-600/80 text-[10px] text-white px-1.5 py-0.5 rounded">User</div>
                         </div>
                     ))}
@@ -248,7 +253,7 @@ export default function AnalysisDashboard() {
                     {/* AI Image */}
                     {state.status === "success" && state.url && (
                         <div className="relative group rounded-md overflow-hidden border border-purple-500/30">
-                            <img src={state.url} className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                            <Image src={state.url} width={100} height={100} alt="AI Image" className="w-full h-auto object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                             <div className="absolute top-1 right-1 bg-purple-600/80 text-[10px] text-white px-1.5 py-0.5 rounded">AI</div>
                         </div>
                     )}
@@ -406,7 +411,7 @@ export default function AnalysisDashboard() {
                                         <button
                                             onClick={() => {
                                                 setCurrentStep(2);
-                                                runStep(2, fileAnalyses, repoDetails?.name);
+                                                runStep(2, fileAnalyses, originalRepoUrl);
                                             }}
                                             className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-white font-bold text-lg flex items-center gap-3 shadow-xl hover:shadow-blue-500/25 transition-all transform hover:-translate-y-1"
                                         >
@@ -467,7 +472,7 @@ export default function AnalysisDashboard() {
                                         remarkPlugins={[remarkGfm]}
                                         components={{
                                             img: ({ node, ...props }) => (
-                                                <img {...props} className="rounded-lg shadow-lg border border-neutral-700 max-w-full h-auto my-6 mx-auto block" />
+                                                <Image {...props} src={props.src || ""} alt={props.alt || ""} width={800} height={600} className="rounded-lg shadow-lg border border-neutral-700 max-w-full h-auto my-6 mx-auto block" />
                                             )
                                         }}
                                     >

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { FileUpload } from "@/components/ui/file-upload";
 import { X, CheckCircle, Loader2, Tag } from "lucide-react";
+import Image from "next/image";
 
 export interface TaggedFile {
     url: string;
@@ -132,9 +133,11 @@ export function FileUploadDemo({ onFilesChange, availableTags = [] }: FileUpload
                                 onClick={() => toggleSelection(file.url)}
                                 className="relative cursor-pointer h-40 w-full"
                             >
-                                <img
+                                <Image
                                     src={file.url}
                                     alt={file.originalName}
+                                    width={100}
+                                    height={100}
                                     className="w-full h-full object-cover"
                                 />
                                 <div className={`absolute top-2 right-2 p-1 rounded-full ${selectedIds.has(file.url) ? "bg-green-500 text-white" : "bg-black/50 text-white/50"}`}>

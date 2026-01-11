@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Mic, MicOff, PhoneOff, Play, Loader2, Clock, Volume2, Radio, CheckCircle, BrainCircuit } from "lucide-react";
@@ -18,10 +18,65 @@ export default function InterviewControls({ repoName, fileContext, architectureC
     const [showEndModal, setShowEndModal] = useState(false);
     const [feedback, setFeedback] = useState("");
     const [transcript, setTranscript] = useState<string[]>([]);
+    const [interviewId, setInterviewId] = useState<string | null>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const dataChannelRef = useRef<RTCDataChannel | null>(null);
+
+
+    const finalizeSession = useCallback(() => {
+        setStatus("ended");
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+        }
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => track.stop());
+            localStreamRef.current = null;
+        }
+    }, []);
+
+    const startSummarization = useCallback(() => {
+        if (!dataChannelRef.current || dataChannelRef.current.readyState !== "open") {
+            finalizeSession();
+            return;
+        }
+
+        setStatus("summarizing");
+        console.log("📝 Timer ended. Requesting summary...");
+
+        try {
+            // 1. Insert User Message: "Time is up..."
+            const createItemEvent = {
+                type: "conversation.item.create",
+                item: {
+                    type: "message",
+                    role: "user",
+                    content: [
+                        {
+                            type: "input_text",
+                            text: "Our time is up. Please provide a concise summary of the interview now, highlighting what we discussed and your key feedback. Keep it brief."
+                        }
+                    ]
+                }
+            };
+            dataChannelRef.current.send(JSON.stringify(createItemEvent));
+
+            // 2. Force Response Generation
+            const responseCreateEvent = {
+                type: "response.create",
+                response: {
+                    modalities: ["audio", "text"],
+                }
+            };
+            dataChannelRef.current.send(JSON.stringify(responseCreateEvent));
+
+        } catch (e) {
+            console.error("Failed to start summary:", e);
+            finalizeSession();
+        }
+    }, [finalizeSession]);
 
     // Timer Logic
     useEffect(() => {
@@ -32,7 +87,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
             // Timer ended - Start summarization automatically
             startSummarization();
         }
-    }, [status, timeLeft]);
+    }, [status, timeLeft, startSummarization]);
 
     // Summarization Timeout Logic
     useEffect(() => {
@@ -43,7 +98,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
             }, 10000); // 10 seconds
             return () => clearTimeout(timeout);
         }
-    }, [status]);
+    }, [status, finalizeSession]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -66,6 +121,11 @@ export default function InterviewControls({ repoName, fileContext, architectureC
             });
             const data = await tokenRes.json();
             const EPHEMERAL_KEY = data.client_secret.value;
+
+            // Store interview ID for later use
+            if (data.interviewId) {
+                setInterviewId(data.interviewId);
+            }
 
             setStatus("connecting");
 
@@ -163,46 +223,6 @@ export default function InterviewControls({ repoName, fileContext, architectureC
         }
     };
 
-    const startSummarization = () => {
-        if (!dataChannelRef.current || dataChannelRef.current.readyState !== "open") {
-            finalizeSession();
-            return;
-        }
-
-        setStatus("summarizing");
-        console.log("📝 Timer ended. Requesting summary...");
-
-        try {
-            // 1. Insert User Message: "Time is up..."
-            const createItemEvent = {
-                type: "conversation.item.create",
-                item: {
-                    type: "message",
-                    role: "user",
-                    content: [
-                        {
-                            type: "input_text",
-                            text: "Our time is up. Please provide a concise summary of the interview now, highlighting what we discussed and your key feedback. Keep it brief."
-                        }
-                    ]
-                }
-            };
-            dataChannelRef.current.send(JSON.stringify(createItemEvent));
-
-            // 2. Force Response Generation
-            const responseCreateEvent = {
-                type: "response.create",
-                response: {
-                    modalities: ["audio", "text"],
-                }
-            };
-            dataChannelRef.current.send(JSON.stringify(responseCreateEvent));
-
-        } catch (e) {
-            console.error("Failed to start summary:", e);
-            finalizeSession();
-        }
-    };
 
     const handleGenerateReport = async () => {
         setStatus("generating_feedback");
@@ -211,7 +231,8 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                 method: "POST",
                 body: JSON.stringify({
                     transcript: transcript,
-                    repoName: repoName
+                    repoName: repoName,
+                    interviewId: interviewId
                 })
             });
             const data = await res.json();
@@ -237,13 +258,6 @@ export default function InterviewControls({ repoName, fileContext, architectureC
         }
     };
 
-    const finalizeSession = () => {
-        if (peerConnectionRef.current) peerConnectionRef.current.close();
-        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
-        if (dataChannelRef.current) dataChannelRef.current.close();
-        setShowEndModal(false);
-        setStatus("ended");
-    };
 
     const confirmEndSession = () => {
         // When user manually ends, don't generate feedback - just close
