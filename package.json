@@ -17,7 +17,7 @@
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.23.26",
+    "framer-motion": "^12.26.1",
     "lucide-react": "^0.560.0",
     "motion": "^12.24.12",
     "next": "14.2.33",

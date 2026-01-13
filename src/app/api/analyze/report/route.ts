@@ -16,9 +16,14 @@ export async function POST(request: Request) {
         const { repoUrl, fileAnalyses, step, context, customImages, skipAIImages, selectedDiagrams, existingDiagrams, generatedDiagrams } = await request.json();
         console.log(`Step ${step} Request. Repo URL: ${repoUrl || 'undefined'}`);
 
-        // Get user session
+        // Get user session and enforce authentication
         const session = await getServerSession(authOptions);
-        const userId = session?.user ? (session.user as any).id : null;
+
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized. Please login to use this feature." }, { status: 401 });
+        }
+
+        const userId = (session.user as any).id;
 
         // Basic validation
         // Repo name is optional for intermediate steps if we just want generation
@@ -348,6 +353,37 @@ Structure:
                     });
                 }
             }
+        }
+
+        // Store Step 1, 2, and 3 results in architectureContext for resume functionality
+        if ((step === 1 || step === 2 || step === 3) && analysis && result) {
+            // Get existing context or create new one
+            let existingContext = { textual: "", structure: "", visuals: "" };
+
+            if (analysis.architectureContext) {
+                try {
+                    existingContext = JSON.parse(analysis.architectureContext);
+                } catch (e) {
+                    console.error("Failed to parse existing context:", e);
+                }
+            }
+
+            // Update the appropriate field
+            if (step === 1) {
+                existingContext.textual = result;
+            } else if (step === 2) {
+                existingContext.structure = result;
+            } else if (step === 3) {
+                existingContext.visuals = result;
+            }
+
+            // Save back to database
+            await prisma.analysis.update({
+                where: { id: analysis.id },
+                data: {
+                    architectureContext: JSON.stringify(existingContext)
+                }
+            });
         }
 
         // Store final report in database (Step 4 - Book)

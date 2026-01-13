@@ -35,39 +35,12 @@ export default function DocumentViewerPage() {
         }
     }, [status, params.id, fetchDocument, router]);
 
-
-
-    // Parse markdown into chapters
-    const parseMarkdownToChapters = (markdown: string) => {
-        const lines = markdown.split('\n');
-        const chapters: { title: string; content: string }[] = [];
-        let currentChapter: { title: string; content: string } | null = null;
-
-        for (const line of lines) {
-            // Check for chapter headers (## Chapter Title)
-            if (line.startsWith('## ')) {
-                // Save previous chapter
-                if (currentChapter) {
-                    chapters.push(currentChapter);
-                }
-                // Start new chapter
-                currentChapter = {
-                    title: line.replace('## ', '').trim(),
-                    content: ''
-                };
-            } else if (currentChapter) {
-                // Add content to current chapter
-                currentChapter.content += line + '\n';
-            }
+    // Redirect to doc page for resume if document is still processing
+    useEffect(() => {
+        if (analysis && analysis.status === "processing") {
+            router.push(`/doc?resumeId=${params.id}`);
         }
-
-        // Save last chapter
-        if (currentChapter) {
-            chapters.push(currentChapter);
-        }
-
-        return chapters;
-    };
+    }, [analysis, params.id, router]);
 
     if (loading || status === "loading") {
         return (
@@ -94,7 +67,7 @@ export default function DocumentViewerPage() {
     }
 
     // Check if document is completed and has a report
-    const hasReport = analysis.reports && analysis.reports.length > 0;
+    const hasReport = analysis?.reports && analysis.reports.length > 0;
 
     if (!hasReport) {
         return (

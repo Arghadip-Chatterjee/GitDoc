@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Mic, MicOff, PhoneOff, Play, Loader2, Clock, Volume2, Radio, CheckCircle, BrainCircuit } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Play, Loader2, Clock, Volume2, CheckCircle, BrainCircuit, Wifi, WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface InterviewControlsProps {
@@ -16,6 +16,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
     const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
     const [isMuted, setIsMuted] = useState(false);
     const [showEndModal, setShowEndModal] = useState(false);
+    const [showCloseModal, setShowCloseModal] = useState(false);
     const [feedback, setFeedback] = useState("");
     const [transcript, setTranscript] = useState<string[]>([]);
     const [interviewId, setInterviewId] = useState<string | null>(null);
@@ -285,6 +286,11 @@ export default function InterviewControls({ repoName, fileContext, architectureC
     };
 
     const closeSession = () => {
+        setShowCloseModal(true);
+    };
+
+    const confirmCloseSession = () => {
+        setShowCloseModal(false);
         if (peerConnectionRef.current) peerConnectionRef.current.close();
         if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
         if (dataChannelRef.current) dataChannelRef.current.close();
@@ -292,10 +298,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
     };
 
     return (
-        <div className="flex flex-col h-full bg-neutral-900/50 backdrop-blur-xl border border-white/10 relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
-
+        <div className="flex flex-col h-full bg-black border border-white/10 rounded-2xl relative overflow-hidden font-sans">
             {/* End Confirmation Modal */}
             <AnimatePresence>
                 {showEndModal && (
@@ -303,7 +306,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
                         onClick={() => setShowEndModal(false)}
                     >
                         <motion.div
@@ -311,22 +314,24 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-neutral-900 border border-white/10 rounded-2xl p-6 max-w-md w-full space-y-4"
+                            className="bg-neutral-900 border border-white/10 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl"
                         >
-                            <h3 className="text-xl font-bold text-white">End Interview?</h3>
-                            <p className="text-neutral-400">
-                                Are you sure you want to end the interview session? You can generate detailed feedback afterwards.
-                            </p>
-                            <div className="flex gap-3">
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold text-white">End Interview?</h3>
+                                <p className="text-neutral-400 text-sm leading-relaxed">
+                                    Are you sure you want to end the interview session? You can generate detailed feedback afterwards.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => setShowEndModal(false)}
-                                    className="flex-1 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl transition-colors border border-white/10"
+                                    className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-medium rounded-lg transition-colors border border-white/10 text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={confirmEndSession}
-                                    className="flex-1 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-semibold rounded-xl transition-colors"
+                                    className="flex-1 py-2.5 bg-red-900/20 hover:bg-red-900/30 text-red-500 border border-red-900/40 font-medium rounded-lg transition-colors text-sm"
                                 >
                                     End Session
                                 </button>
@@ -336,248 +341,308 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                 )}
             </AnimatePresence>
 
-            {/* Header */}
-            <div className="relative z-10 p-6 border-b border-white/5 flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-3">
-                        Mock Interview
-                        <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-mono font-medium">
-                            BETA
-                        </span>
-                    </h2>
-                    <p className="text-sm text-neutral-400 mt-1 max-w-[300px] truncate">
-                        {repoName}
-                    </p>
-                </div>
+            {/* Close Confirmation Modal */}
+            <AnimatePresence>
+                {showCloseModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setShowCloseModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-neutral-900 border border-white/10 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl"
+                        >
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold text-white">Close Session?</h3>
+                                <p className="text-neutral-400 text-sm leading-relaxed">
+                                    Are you sure you want to leave? Any unsaved progress will be lost.
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowCloseModal(false)}
+                                    className="flex-1 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-medium rounded-lg transition-colors border border-white/10 text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmCloseSession}
+                                    className="flex-1 py-2.5 bg-red-900/20 hover:bg-red-900/30 text-red-500 border border-red-900/40 font-medium rounded-lg transition-colors text-sm"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                <div className="flex items-center gap-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${status === 'active' || status === 'summarizing'
-                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
+            {/* Application Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-black">
+                <div>
+                    <div className="flex items-center gap-3 mb-1">
+                        <h2 className="text-lg font-bold text-white tracking-wide">Mock Interview</h2>
+                        <span className="bg-blue-600/20 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-600/30">BETA</span>
+                    </div>
+                    <p className="text-neutral-500 text-xs font-mono">{repoName}</p>
+                </div>
+                <div>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-wider ${status === 'active'
+                        ? 'bg-green-500/10 border-green-500/20 text-green-500'
                         : 'bg-neutral-800 border-neutral-700 text-neutral-400'
                         }`}>
-                        <div className={`w-2 h-2 rounded-full ${status === 'active' || status === 'summarizing' ? 'bg-green-500 animate-pulse' : 'bg-neutral-500'}`} />
-                        <span className="text-xs font-semibold uppercase tracking-wider">
-                            {status === 'active' ? 'Live' : status === 'summarizing' ? 'Summarizing' : status === 'ended' ? 'Finished' : 'Offline'}
-                        </span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-neutral-500'}`} />
+                        {status === 'active' ? 'Live' : 'Offline'}
                     </div>
                 </div>
             </div>
 
-            {/* Main Visualizer Area */}
-            <div className={`flex-1 relative flex flex-col p-4 md:p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent`}>
-                {status === "active" || status === "summarizing" ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center">
-                        {/* Centered Orb - Always in center */}
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col items-center justify-center p-8 relative">
+                {/* Background Grid */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#1a1a1a_1px,transparent_1px),linear-gradient(to_bottom,#1a1a1a_1px,transparent_1px)] bg-[size:40px_40px] opacity-10 pointer-events-none"></div>
+
+                {status === "idle" ? (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center w-full max-w-md relative z-10"
+                    >
+                        {/* Signal Icon Circle */}
+                        <div className="w-24 h-24 mx-auto mb-8 rounded-full bg-neutral-900 border border-white/5 flex items-center justify-center relative shadow-2xl">
+                            <div className="absolute inset-0 rounded-full border border-white/5 scale-110 opacity-50"></div>
+                            <div className="absolute inset-0 rounded-full border border-white/5 scale-125 opacity-20"></div>
+                            <Wifi className="w-8 h-8 text-neutral-500" />
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-white mb-3">Ready to Start</h3>
+                        <p className="text-neutral-500 text-sm leading-relaxed mb-4">
+                            The AI has analyzed your repository context. Click "Start Interview" to begin your 5-minute technical screening.
+                        </p>
+                    </motion.div>
+                ) : status === "active" || status === "getting_token" || status === "connecting" || status === "summarizing" ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center relative z-10">
+                        {/* Active Visualizer */}
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             className="relative flex flex-col items-center"
                         >
-                            {/* Glowing Orb Animation */}
-                            <div className="relative w-48 h-48 flex items-center justify-center">
-                                <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full animate-pulse" />
-                                <div className="absolute inset-4 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-full opacity-20 animate-spin-slow blur-md" />
-                                <div className="relative w-32 h-32 bg-black rounded-full border border-blue-500/30 flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.2)]">
-                                    <div className="w-24 h-24 rounded-full bg-gradient-to-b from-blue-900/50 to-black overflow-hidden flex items-center justify-center relative">
-                                        <div className="space-y-1 flex items-center justify-center gap-1">
-                                            {[...Array(3)].map((_, i) => (
+                            <div className="relative w-48 h-48 flex items-center justify-center mb-8">
+                                <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full animate-pulse" />
+
+                                {/* Orbital Rings */}
+                                <div className="absolute inset-0 border border-blue-500/20 rounded-full animate-[spin_8s_linear_infinite]" />
+                                <div className="absolute inset-4 border border-blue-500/10 rounded-full animate-[spin_12s_linear_infinite_reverse]" />
+
+                                {/* Center Core */}
+                                <div className="relative w-24 h-24 bg-black rounded-full border border-blue-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.1)]">
+                                    {status === "getting_token" || status === "connecting" ? (
+                                        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                                    ) : (
+                                        <div className="flex gap-1 items-end h-8">
+                                            {[...Array(5)].map((_, i) => (
                                                 <motion.div
                                                     key={i}
-                                                    className="w-1.5 bg-blue-400 rounded-full"
-                                                    animate={{ height: [10, 24, 10] }}
+                                                    className="w-1.5 bg-blue-500 rounded-full"
+                                                    animate={{
+                                                        height: [8, Math.random() * 24 + 8, 8],
+                                                        opacity: [0.5, 1, 0.5]
+                                                    }}
                                                     transition={{
                                                         repeat: Infinity,
-                                                        duration: 1,
-                                                        delay: i * 0.2,
+                                                        duration: 0.5,
+                                                        delay: i * 0.1,
                                                         ease: "easeInOut"
                                                     }}
                                                 />
                                             ))}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
-                            <p className="text-center text-blue-200/50 text-sm mt-8 font-mono animate-pulse">
-                                {status === "summarizing" ? "AI is summarizing..." : "AI is listening..."}
-                            </p>
+
+                            <div className="space-y-2 text-center">
+                                <h4 className="text-xl font-bold text-white">
+                                    {status === "connecting" ? "Connecting..." :
+                                        status === "summarizing" ? "Summarizing..." : "Interview in Progress"}
+                                </h4>
+                                <p className="text-neutral-500 text-sm font-mono">
+                                    {status === "summarizing" ? "AI is generating feedback" : "AI is listening"}
+                                </p>
+                            </div>
                         </motion.div>
 
-                        {/* Live Transcript - Fixed at Bottom */}
-                        {transcript.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="absolute bottom-4 left-4 right-4 bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-lg p-3 max-h-32 overflow-y-auto shadow-2xl"
-                            >
-                                <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/10">
-                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                                    <h4 className="text-[10px] font-bold text-neutral-300 uppercase tracking-wider">Live Transcript</h4>
-                                </div>
-                                <div className="space-y-1">
-                                    {transcript.slice(-3).map((text, idx) => (
-                                        <motion.div
-                                            key={idx}
-                                            initial={{ opacity: 0, x: -5 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            className="text-neutral-300 text-[11px] leading-snug"
-                                        >
-                                            {text}
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </div>
-                ) : status === "generating_feedback" ? (
-                    <div className="m-auto text-center space-y-6 max-w-md">
-                        <Loader2 className="w-16 h-16 mx-auto text-blue-400 animate-spin" />
-                        <div>
-                            <h3 className="text-lg font-semibold text-white mb-2">Generating Feedback...</h3>
-                            <p className="text-neutral-400 text-sm">
-                                The AI is analyzing your performance and preparing detailed feedback.
-                            </p>
-                        </div>
-                    </div>
-                ) : status === "ended" ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="w-full max-w-2xl space-y-6 m-auto flex-shrink-0"
-                    >
-                        <div className="text-center mb-2">
-                            <h3 className="text-2xl font-bold text-white mb-2">Interview Complete!</h3>
-                            <p className="text-neutral-400 text-sm">
-                                {feedback ? "Here's your performance feedback" : "You can now generate a detailed report."}
-                            </p>
-                        </div>
-
-                        {/* Transcript Display */}
-                        {transcript.length > 0 && (
-                            <div className="bg-neutral-800/50 border border-white/5 rounded-xl p-6 space-y-3">
-                                <h4 className="text-base font-semibold text-purple-400">Conversation Transcript</h4>
-                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-700">
-                                    {transcript.map((text, idx) => (
-                                        <p key={idx} className="text-neutral-300 text-xs leading-relaxed border-l-2 border-purple-500/20 pl-3">
-                                            {text}
-                                        </p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Feedback Display */}
-                        {feedback && (
-                            <div className="bg-neutral-800/50 border border-white/5 rounded-xl p-6 space-y-3 animate-in fade-in slide-in-from-bottom-5">
-                                <h4 className="text-base font-semibold text-blue-400 flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4" /> AI Feedback
-                                </h4>
-                                <div className="prose prose-invert prose-sm max-w-none text-neutral-300">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{feedback}</ReactMarkdown>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex gap-4">
-                            {!feedback && (
-                                <button
-                                    onClick={handleGenerateReport}
-                                    className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-indigo-500 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                        {/* Live Transcript Toast */}
+                        <AnimatePresence>
+                            {transcript.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
+                                    className="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-lg bg-neutral-900/90 backdrop-blur border border-white/10 rounded-t-xl p-4 shadow-2xl"
                                 >
-                                    <BrainCircuit className="w-5 h-5" />
-                                    Generate Detailed Report
-                                </button>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Live Transcript</span>
+                                    </div>
+                                    <p className="text-neutral-300 text-xs font-mono leading-relaxed line-clamp-2">
+                                        {transcript[transcript.length - 1]}
+                                    </p>
+                                </motion.div>
                             )}
-                            <button
-                                onClick={closeSession}
-                                className={`py-4 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-all text-sm ${feedback ? 'w-full' : 'w-1/3'}`}
-                            >
-                                Close
-                            </button>
+                        </AnimatePresence>
+                    </div>
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="w-full h-full flex flex-col md:flex-row gap-6 overflow-hidden"
+                    >
+                        {/* Left Side: Summary & Actions */}
+                        <div className="md:w-1/3 flex flex-col gap-4 flex-shrink-0 min-h-0 overflow-y-auto">
+                            <div className="bg-neutral-900/50 border border-white/10 rounded-xl p-6 text-center shadow-lg">
+                                <div className="w-16 h-16 mx-auto bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/20 mb-4">
+                                    <CheckCircle className="w-8 h-8 text-green-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-1">Interview Complete</h3>
+                                <p className="text-neutral-500 text-xs">Session recorded successfully</p>
+                            </div>
+
+                            <div className="flex-1 bg-neutral-900/50 border border-white/10 rounded-xl p-4 flex flex-col justify-center gap-3 shadow-lg">
+                                {!feedback && status !== "generating_feedback" && (
+                                    <button
+                                        onClick={handleGenerateReport}
+                                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 group"
+                                    >
+                                        <BrainCircuit className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                        Generate AI Report
+                                    </button>
+                                )}
+                                <button
+                                    onClick={closeSession}
+                                    className="w-full py-3 bg-neutral-800 text-white font-bold rounded-lg hover:bg-neutral-700 transition-colors text-sm border border-white/10"
+                                >
+                                    Return to Menu
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Right Side: Feedback / Transcript */}
+                        <div className="flex-1 bg-neutral-900/50 border border-white/10 rounded-xl p-6 min-h-0 overflow-hidden flex flex-col shadow-lg relative">
+                            {/* Tabs / Header for Right Panel */}
+                            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2 flex-shrink-0">
+                                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                    {status === "generating_feedback" ? (
+                                        <><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> Generating Analysis...</>
+                                    ) : feedback ? (
+                                        <><BrainCircuit className="w-4 h-4 text-purple-400" /> Analysis Report</>
+                                    ) : (
+                                        <><Mic className="w-4 h-4 text-blue-400" /> Transcript Preview</>
+                                    )}
+                                </h4>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-neutral-700">
+                                {status === "generating_feedback" ? (
+                                    <div className="h-full flex flex-col items-center justify-center space-y-6">
+                                        <div className="relative w-full max-w-xs">
+                                            <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    className="h-full bg-blue-500"
+                                                    initial={{ width: "0%" }}
+                                                    animate={{ width: "100%" }}
+                                                    transition={{ duration: 8, ease: "linear" }}
+                                                />
+                                            </div>
+                                            <div className="flex justify-between mt-2 text-xs text-neutral-500 font-mono">
+                                                <span>ANALYZING</span>
+                                                <span>GENERATING</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-neutral-400 text-sm animate-pulse">
+                                            Reviewing conversation context and generating technical feedback...
+                                        </p>
+                                    </div>
+                                ) : feedback ? (
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{feedback}</ReactMarkdown>
+                                    </div>
+                                ) : transcript.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {transcript.map((text, idx) => (
+                                            <div key={idx} className="flex gap-3">
+                                                <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    <span className="text-[10px] text-blue-400 font-mono">{idx + 1}</span>
+                                                </div>
+                                                <p className="text-neutral-300 text-xs leading-relaxed font-mono">
+                                                    {text}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center text-neutral-500 gap-2">
+                                        <BrainCircuit className="w-12 h-12 opacity-20" />
+                                        <p className="text-sm">Generate report to view insights</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </motion.div>
-                ) : (
-                    <div className="text-center space-y-6 max-w-sm">
-                        <div className="w-24 h-24 mx-auto bg-neutral-800/50 rounded-full flex items-center justify-center border border-white/5">
-                            <Radio className="w-10 h-10 text-neutral-600" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-white mb-2">Ready to Start</h3>
-                            <p className="text-neutral-400 text-sm">
-                                The AI has analyzed your repository context. Click "Start Interview" to begin your 5-minute technical screening.
-                            </p>
-                        </div>
-                    </div>
                 )}
             </div>
 
-            {/* Footer Controls */}
-            {status !== "ended" && (
-                <div className="p-6 bg-neutral-900/80 backdrop-blur-xl border-t border-white/5">
-                    <div className="max-w-md mx-auto w-full space-y-6">
-                        {/* Timer */}
-                        {status !== "generating_feedback" && status !== "summarizing" && (
-                            <div className="flex items-center justify-center gap-2 text-neutral-400 font-mono text-sm">
-                                <Clock className="w-4 h-4" />
-                                <span className={timeLeft < 60 ? "text-red-400 font-bold" : ""}>
-                                    {formatTime(timeLeft)} remaining
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center justify-center gap-4">
-                            {status === "idle" ? (
-                                <button
-                                    onClick={startSession}
-                                    className="w-full py-4 bg-white text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all transform hover:scale-[1.02] shadow-xl"
-                                >
-                                    <Play className="w-5 h-5 fill-current" />
-                                    Start Interview
-                                </button>
-                            ) : status === "getting_token" || status === "connecting" ? (
-                                <button disabled className="w-full py-4 bg-neutral-800 text-neutral-400 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-white/5">
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Establishing Secure Connection...
-                                </button>
-                            ) : status === "summarizing" ? (
-                                <button disabled className="w-full py-4 bg-purple-500/10 text-purple-400 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-purple-500/20">
-                                    <div className="flex gap-1 items-center">
-                                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" />
-                                    </div>
-                                    Summarizing Conversation...
-                                </button>
-                            ) : status === "generating_feedback" ? (
-                                <button disabled className="w-full py-4 bg-neutral-800 text-neutral-400 font-bold rounded-xl flex items-center justify-center gap-2 cursor-not-allowed border border-white/5">
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Generating Feedback...
-                                </button>
-                            ) : (
-                                <>
-                                    <button
-                                        onClick={toggleMute}
-                                        className={`px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${isMuted
-                                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                            : 'bg-neutral-800 text-white hover:bg-neutral-700 border border-white/10'
-                                            }`}
-                                    >
-                                        {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                                    </button>
-                                    <button
-                                        onClick={handleEndSession}
-                                        className="flex-1 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
-                                    >
-                                        <PhoneOff className="w-5 h-5" />
-                                        End Session
-                                    </button>
-                                </>
-                            )}
+            {/* Footer Control Bar */}
+            <div className="border-t border-white/10 bg-neutral-900/30 p-6">
+                <div className="flex flex-col items-center justify-center gap-6">
+                    {/* Timer Display */}
+                    {status !== "generating_feedback" && status !== "summarizing" && status !== "ended" && (
+                        <div className="flex items-center gap-2 text-neutral-500 font-mono text-xs uppercase tracking-widest">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span className={timeLeft < 30 ? "text-red-400" : ""}>{formatTime(timeLeft)} remaining</span>
                         </div>
+                    )}
+
+                    {/* Primary Button */}
+                    <div className="w-full max-w-xs">
+                        {status === "idle" ? (
+                            <button
+                                onClick={startSession}
+                                className="w-full py-3.5 bg-white text-black font-bold text-sm rounded-lg hover:bg-neutral-200 transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] group"
+                            >
+                                <Play className="w-4 h-4 fill-current group-hover:scale-110 transition-transform" />
+                                Start Interview
+                            </button>
+                        ) : status === "active" ? (
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={toggleMute}
+                                    className={`p-3.5 rounded-lg border transition-all ${isMuted
+                                        ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                                        : 'bg-neutral-800 border-white/10 text-white hover:bg-neutral-700'
+                                        }`}
+                                >
+                                    {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                </button>
+                                <button
+                                    onClick={handleEndSession}
+                                    className="flex-1 py-3.5 bg-red-900/20 hover:bg-red-900/30 text-red-500 border border-red-900/30 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2"
+                                >
+                                    <PhoneOff className="w-4 h-4" />
+                                    End Session
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Hidden Audio Element for Output */}
             <audio ref={audioRef} className="hidden" />

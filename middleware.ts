@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Public routes that don't need authentication
-    const publicRoutes = ["/", "/auth/signin", "/auth/signup", "/interview"];
+    const publicRoutes = ["/", "/auth/signin", "/auth/signup"];
     const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith("/api/auth"));
 
     // Allow public routes
@@ -21,6 +21,36 @@ export async function middleware(request: NextRequest) {
 
     // Protect /dashboard routes - require authentication
     if (pathname.startsWith("/dashboard")) {
+        if (!token) {
+            const url = new URL("/auth/signin", request.url);
+            url.searchParams.set("callbackUrl", pathname);
+            return NextResponse.redirect(url);
+        }
+        return NextResponse.next();
+    }
+
+    // Protect /interview routes - require authentication
+    if (pathname.startsWith("/interview")) {
+        if (!token) {
+            const url = new URL("/auth/signin", request.url);
+            url.searchParams.set("callbackUrl", pathname);
+            return NextResponse.redirect(url);
+        }
+        return NextResponse.next();
+    }
+
+    // Protect /document routes (reports) - require authentication
+    if (pathname.startsWith("/document")) {
+        if (!token) {
+            const url = new URL("/auth/signin", request.url);
+            url.searchParams.set("callbackUrl", pathname);
+            return NextResponse.redirect(url);
+        }
+        return NextResponse.next();
+    }
+
+    // Protect /doc routes (generator) - require authentication
+    if (pathname.startsWith("/doc")) {
         if (!token) {
             const url = new URL("/auth/signin", request.url);
             url.searchParams.set("callbackUrl", pathname);

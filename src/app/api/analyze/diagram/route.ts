@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { openai } from "@/lib/openai";
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -10,6 +12,12 @@ cloudinary.config({
 
 export async function POST(request: Request) {
     try {
+        // Check authentication
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { repoName, context, diagramType } = await request.json();
 
         console.log(`Generating separate diagram: ${diagramType}`);

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import UserDashboard from "@/components/UserDashboard";
-import { Navbar } from "@/components/LandingPage/Navbar";
 
-export default async function DashboardPage() {
+export default async function DashboardLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     // Server-side authentication check
     const session = await getServerSession(authOptions);
 
@@ -12,10 +14,5 @@ export default async function DashboardPage() {
         redirect("/auth/signin?callbackUrl=/dashboard");
     }
 
-    return (
-        <main>
-            <Navbar />
-            <UserDashboard />
-        </main>
-    );
+    return <>{children}</>;
 }

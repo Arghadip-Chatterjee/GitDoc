@@ -1,5 +1,11 @@
 import AdminDashboard from "@/components/AdminDashboard";
+import { Navbar } from "@/components/LandingPage/Navbar";
 
 export default function AdminPage() {
-    return <AdminDashboard />;
+    return (
+        <main>
+            <Navbar />
+            <AdminDashboard />
+        </main>
+    );
 }
