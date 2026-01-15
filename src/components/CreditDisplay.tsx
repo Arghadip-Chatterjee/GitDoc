@@ -129,14 +129,14 @@ export default function CreditDisplay() {
                                 animate={{ width: `${(credits.documentCredits / 2) * 100}%` }}
                                 transition={{ duration: 0.5, ease: "easeOut" }}
                                 className={`h-full ${credits.documentCredits === 0
-                                        ? "bg-red-500"
-                                        : credits.documentCredits === 1
-                                            ? "bg-yellow-500"
-                                            : "bg-purple-500"
+                                    ? "bg-red-500"
+                                    : credits.documentCredits === 1
+                                        ? "bg-yellow-500"
+                                        : "bg-purple-500"
                                     }`}
                             />
                         </div>
-                        {credits.documentCredits === 0 && documentTimeLeft && (
+                        {documentTimeLeft && (
                             <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
                                 <Clock className="w-3 h-3" />
                                 <span>Resets in {documentTimeLeft}</span>
@@ -161,14 +161,14 @@ export default function CreditDisplay() {
                                 animate={{ width: `${(credits.interviewCredits / 2) * 100}%` }}
                                 transition={{ duration: 0.5, ease: "easeOut" }}
                                 className={`h-full ${credits.interviewCredits === 0
-                                        ? "bg-red-500"
-                                        : credits.interviewCredits === 1
-                                            ? "bg-yellow-500"
-                                            : "bg-blue-500"
+                                    ? "bg-red-500"
+                                    : credits.interviewCredits === 1
+                                        ? "bg-yellow-500"
+                                        : "bg-blue-500"
                                     }`}
                             />
                         </div>
-                        {credits.interviewCredits === 0 && interviewTimeLeft && (
+                        {interviewTimeLeft && (
                             <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
                                 <Clock className="w-3 h-3" />
                                 <span>Resets in {interviewTimeLeft}</span>

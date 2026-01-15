@@ -4,7 +4,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, BookOpen, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, List, Download, Loader2 } from "lucide-react";
 import Image from "next/image";
 
 interface Chapter {
@@ -20,11 +20,14 @@ interface BookData {
 interface BookViewerProps {
     bookData: BookData;
     repoDetails?: any;
+    analysisId?: string;
 }
 
-export default function BookViewer({ bookData, repoDetails }: BookViewerProps) {
+export default function BookViewer({ bookData, repoDetails, analysisId }: BookViewerProps) {
     const [currentPage, setCurrentPage] = useState(0);
     const [showTableOfContents, setShowTableOfContents] = useState(false);
+    const [exportingPDF, setExportingPDF] = useState(false);
+    const [exportingWord, setExportingWord] = useState(false);
 
     if (!bookData || !bookData.chapters || bookData.chapters.length === 0) {
         return <div className="text-gray-400 text-center p-8">No book data available.</div>;
@@ -45,6 +48,60 @@ export default function BookViewer({ bookData, repoDetails }: BookViewerProps) {
         }
     };
 
+    const exportToPDF = async () => {
+        if (!analysisId) return;
+        setExportingPDF(true);
+        try {
+            const response = await fetch('/api/export/pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ analysisId }),
+            });
+            if (!response.ok) throw new Error('PDF export failed');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${bookData.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('PDF export error:', error);
+            alert('Failed to export PDF');
+        } finally {
+            setExportingPDF(false);
+        }
+    };
+
+    const exportToWord = async () => {
+        if (!analysisId) return;
+        setExportingWord(true);
+        try {
+            const response = await fetch('/api/export/word', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ analysisId }),
+            });
+            if (!response.ok) throw new Error('Word export failed');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${bookData.title.replace(/[^a-z0-9]/gi, '_')}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Word export error:', error);
+            alert('Failed to export Word document');
+        } finally {
+            setExportingWord(false);
+        }
+    };
+
     return (
         <div className="w-full max-w-6xl mx-auto my-12 relative font-serif">
             {/* Book Cover / Header */}
@@ -54,6 +111,36 @@ export default function BookViewer({ bookData, repoDetails }: BookViewerProps) {
                     <h1 className="text-4xl font-bold tracking-wide">{bookData.title}</h1>
                 </div>
                 <p className="text-gray-500 italic">Automated Technical Documentation</p>
+
+                {/* Export Buttons */}
+                {analysisId && (
+                    <div className="flex gap-3 justify-center mt-6">
+                        <button
+                            onClick={exportToPDF}
+                            disabled={exportingPDF}
+                            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors shadow-lg"
+                        >
+                            {exportingPDF ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Download size={20} />
+                            )}
+                            {exportingPDF ? 'Generating PDF...' : 'Download PDF'}
+                        </button>
+                        <button
+                            onClick={exportToWord}
+                            disabled={exportingWord}
+                            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors shadow-lg"
+                        >
+                            {exportingWord ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Download size={20} />
+                            )}
+                            {exportingWord ? 'Generating Word...' : 'Download Word'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="flex gap-8 relative">

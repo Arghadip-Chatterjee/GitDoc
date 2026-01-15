@@ -120,7 +120,7 @@ export default function DocumentViewerPage() {
                 Back to Dashboard
             </button>
 
-            <BookViewer bookData={bookData} repoDetails={null} />
+            <BookViewer bookData={bookData} repoDetails={null} analysisId={params.id as string} />
         </div>
     );
 }
