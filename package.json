@@ -18,10 +18,12 @@
     "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.26.1",
+    "libphonenumber-js": "^1.12.34",
     "lucide-react": "^0.560.0",
     "motion": "^12.24.12",
     "next": "14.2.33",
     "next-auth": "^4.24.13",
+    "nodemailer": "^7.0.12",
     "octokit": "^5.0.5",
     "openai": "^6.15.0",
     "react": "^18",
@@ -30,12 +32,14 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.19.28",
+    "@types/nodemailer": "^7.0.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "dotenv": "^17.2.3",

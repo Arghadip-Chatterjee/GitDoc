@@ -4,6 +4,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { checkCredits, consumeCredit } from "@/lib/credits";
 
 cloudinary.config({
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -44,6 +45,22 @@ ${item.analysis}
 
         // Step 1: Initialize Repository and Analysis
         if (step === 1) {
+            // Check if user has document credits available
+            const creditCheck = await checkCredits(userId, "document");
+
+            if (!creditCheck.hasCredits) {
+                const timeUntilReset = creditCheck.resetAt
+                    ? Math.ceil((creditCheck.resetAt.getTime() - Date.now()) / (1000 * 60 * 60))
+                    : 0;
+
+                return NextResponse.json({
+                    error: "No document generation credits available",
+                    creditsExhausted: true,
+                    timeUntilReset: timeUntilReset,
+                    resetAt: creditCheck.resetAt
+                }, { status: 403 });
+            }
+
             // Parse repository information from user input
             let owner = 'unknown';
             let repo = 'unknown';
@@ -102,9 +119,13 @@ ${item.analysis}
                     userId: userId, // Link to authenticated user
                     status: "processing",
                     step: 1,
-                    fileContext: aggregatedContext
+                    fileContext: JSON.stringify(fileAnalyses) // Store as JSON array for resume functionality
                 }
             });
+
+            // Consume a document credit after successful analysis creation
+            await consumeCredit(userId, "document");
+
 
         } else {
             // Steps 2-4: Find existing Analysis without touching Repository

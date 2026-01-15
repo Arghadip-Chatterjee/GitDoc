@@ -14,9 +14,22 @@ datasource db {
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
+  mobile    String?  @unique  // Mobile number with unique constraint
   name      String?
   password  String   // Hashed password
   isAdmin   Boolean  @default(false)
+  
+  // Email verification
+  emailVerified              Boolean   @default(false)
+  emailVerificationToken     String?   @unique
+  emailVerificationExpires   DateTime?
+  
+  // Credit system fields
+  documentCredits          Int       @default(2)
+  interviewCredits         Int       @default(2)
+  documentCreditsResetAt   DateTime?
+  interviewCreditsResetAt  DateTime?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   

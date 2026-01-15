@@ -27,7 +27,8 @@ export async function GET() {
             completedInterviews,
             recentUsers,
             recentAnalyses,
-            recentInterviews
+            recentInterviews,
+            allUsersWithCredits
         ] = await Promise.all([
             prisma.user.count(),
             prisma.analysis.count(),
@@ -76,8 +77,48 @@ export async function GET() {
                         }
                     }
                 }
+            }),
+            // Fetch all users with credit information
+            prisma.user.findMany({
+                orderBy: { createdAt: 'desc' },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    isAdmin: true,
+                    documentCredits: true,
+                    interviewCredits: true,
+                    documentCreditsResetAt: true,
+                    interviewCreditsResetAt: true,
+                    createdAt: true
+                }
             })
         ]);
+
+        // Calculate time until reset for each user
+        const now = Date.now();
+        const userCredits = allUsersWithCredits.map(user => {
+            const documentTimeUntilReset = user.documentCreditsResetAt
+                ? Math.max(0, user.documentCreditsResetAt.getTime() - now)
+                : null;
+            const interviewTimeUntilReset = user.interviewCreditsResetAt
+                ? Math.max(0, user.interviewCreditsResetAt.getTime() - now)
+                : null;
+
+            return {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                isAdmin: user.isAdmin,
+                documentCredits: user.documentCredits,
+                interviewCredits: user.interviewCredits,
+                documentCreditsResetAt: user.documentCreditsResetAt,
+                interviewCreditsResetAt: user.interviewCreditsResetAt,
+                documentTimeUntilReset,
+                interviewTimeUntilReset,
+                createdAt: user.createdAt
+            };
+        });
 
         return NextResponse.json({
             stats: {
@@ -91,7 +132,8 @@ export async function GET() {
             },
             recentUsers,
             recentAnalyses,
-            recentInterviews
+            recentInterviews,
+            userCredits
         });
 
     } catch (error: any) {

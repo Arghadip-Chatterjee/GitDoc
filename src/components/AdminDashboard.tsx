@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, FileText, MessageSquare, CheckCircle, Clock, Shield, Loader2, Calendar } from "lucide-react";
+import { Users, FileText, MessageSquare, CheckCircle, Clock, Shield, Loader2, Calendar, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function AdminDashboard() {
@@ -13,7 +13,17 @@ export default function AdminDashboard() {
     const [recentUsers, setRecentUsers] = useState<any[]>([]);
     const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
     const [recentInterviews, setRecentInterviews] = useState<any[]>([]);
+    const [userCredits, setUserCredits] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Pagination state for Recent Actions
+    const [actionsPage, setActionsPage] = useState(1);
+    const actionsPerPage = 5;
+
+    // Expanded user details
+    const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+    const [userDetails, setUserDetails] = useState<any>(null);
+    const [loadingUserDetails, setLoadingUserDetails] = useState(false);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -41,10 +51,36 @@ export default function AdminDashboard() {
             setRecentUsers(data.recentUsers || []);
             setRecentAnalyses(data.recentAnalyses || []);
             setRecentInterviews(data.recentInterviews || []);
+            setUserCredits(data.userCredits || []);
         } catch (error) {
             console.error("Failed to fetch admin data:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchUserDetails = async (userId: string) => {
+        setLoadingUserDetails(true);
+        try {
+            const res = await fetch(`/api/admin/user/${userId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setUserDetails(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch user details:", error);
+        } finally {
+            setLoadingUserDetails(false);
+        }
+    };
+
+    const toggleUserExpand = (userId: string) => {
+        if (expandedUserId === userId) {
+            setExpandedUserId(null);
+            setUserDetails(null);
+        } else {
+            setExpandedUserId(userId);
+            fetchUserDetails(userId);
         }
     };
 
@@ -249,64 +285,294 @@ export default function AdminDashboard() {
                     <div className="space-y-8">
                         {/* Documents Feed */}
                         <div>
-                            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-gray-500" /> Recent Actions
-                            </h2>
-                            <div className="space-y-4">
-                                {recentAnalyses.slice(0, 4).map((analysis, i) => (
-                                    <motion.div
-                                        key={analysis.id}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.1 }}
-                                        className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 hover:border-purple-500/30 transition-colors group"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20 mt-1">
-                                                <FileText className="w-4 h-4 text-purple-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-[10px] font-mono px-1.5 rounded border ${analysis.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                                                        }`}>{analysis.status}</span>
-                                                    <span className="text-[10px] text-gray-600 font-mono">{new Date(analysis.createdAt).toLocaleTimeString()}</span>
-                                                </div>
-                                                <h4 className="text-sm font-medium text-white truncate group-hover:text-purple-400 transition-colors">{analysis.repository.name}</h4>
-                                                <p className="text-xs text-gray-500 mt-1 truncate">
-                                                    User: {analysis.user?.email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-
-                                {recentInterviews.slice(0, 4).map((interview, i) => (
-                                    <motion.div
-                                        key={interview.id}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: (i + 4) * 0.1 }}
-                                        className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 hover:border-indigo-500/30 transition-colors group"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20 mt-1">
-                                                <MessageSquare className="w-4 h-4 text-indigo-400" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-[10px] font-mono px-1.5 rounded border ${interview.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                                        }`}>{interview.status}</span>
-                                                    <span className="text-[10px] text-gray-600 font-mono">{new Date(interview.createdAt).toLocaleTimeString()}</span>
-                                                </div>
-                                                <h4 className="text-sm font-medium text-white truncate group-hover:text-indigo-400 transition-colors">{interview.repository.name}</h4>
-                                                <p className="text-xs text-gray-500 mt-1 truncate">
-                                                    User: {interview.user?.email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-gray-500" /> Recent Actions
+                                </h2>
                             </div>
+
+                            {/* Combined Actions List */}
+                            <div className="space-y-4">
+                                {(() => {
+                                    // Combine and sort all actions
+                                    const allActions = [
+                                        ...recentAnalyses.map(a => ({ ...a, type: 'analysis' })),
+                                        ...recentInterviews.map(i => ({ ...i, type: 'interview' }))
+                                    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                                    const totalPages = Math.ceil(allActions.length / actionsPerPage);
+                                    const startIndex = (actionsPage - 1) * actionsPerPage;
+                                    const paginatedActions = allActions.slice(startIndex, startIndex + actionsPerPage);
+
+                                    return (
+                                        <>
+                                            {paginatedActions.map((action, i) => (
+                                                <motion.div
+                                                    key={action.id}
+                                                    initial={{ opacity: 0, x: 20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: i * 0.05 }}
+                                                    className={`bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 hover:border-${action.type === 'analysis' ? 'purple' : 'indigo'}-500/30 transition-colors group`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`p-2 bg-${action.type === 'analysis' ? 'purple' : 'indigo'}-500/10 rounded-lg border border-${action.type === 'analysis' ? 'purple' : 'indigo'}-500/20 mt-1`}>
+                                                            {action.type === 'analysis' ? (
+                                                                <FileText className="w-4 h-4 text-purple-400" />
+                                                            ) : (
+                                                                <MessageSquare className="w-4 h-4 text-indigo-400" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className={`text-[10px] font-mono px-1.5 rounded border ${action.status === 'completed'
+                                                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                                                    : action.status === 'processing'
+                                                                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                                        : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                                                    }`}>
+                                                                    {action.status}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-600 font-mono">
+                                                                    {new Date(action.createdAt).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                            <h4 className={`text-sm font-medium text-white truncate group-hover:text-${action.type === 'analysis' ? 'purple' : 'indigo'}-400 transition-colors`}>
+                                                                {action.repository.name}
+                                                            </h4>
+                                                            <p className="text-xs text-gray-500 mt-1 truncate">
+                                                                User: {action.user?.email || 'Unknown'}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <span className={`text-[9px] px-2 py-0.5 rounded-full ${action.type === 'analysis'
+                                                                    ? 'bg-purple-500/10 text-purple-400'
+                                                                    : 'bg-indigo-500/10 text-indigo-400'
+                                                                    }`}>
+                                                                    {action.type === 'analysis' ? 'DOCUMENT' : 'INTERVIEW'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+
+                                            {/* Pagination Controls */}
+                                            {totalPages > 1 && (
+                                                <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                                                    <div className="text-xs text-gray-500 font-mono">
+                                                        Page {actionsPage} of {totalPages} ({allActions.length} total)
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setActionsPage(p => Math.max(1, p - 1))}
+                                                            disabled={actionsPage === 1}
+                                                            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-gray-400 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                                        >
+                                                            <ChevronLeft className="w-3 h-3" /> Prev
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setActionsPage(p => Math.min(totalPages, p + 1))}
+                                                            disabled={actionsPage === totalPages}
+                                                            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-gray-400 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                                                        >
+                                                            Next <ChevronRight className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* User Credits Monitoring Section */}
+                <div className="mt-12">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-gray-500" /> User Credit Status
+                        </h2>
+                    </div>
+                    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-white/5 border-b border-white/10">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">User</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">Doc Credits</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">Doc Cooldown</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">Interview Credits</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-mono font-medium text-gray-400 uppercase tracking-wider">Interview Cooldown</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {userCredits.map((user) => {
+                                        const formatTimeRemaining = (ms: number | null) => {
+                                            if (!ms) return "N/A";
+                                            const hours = Math.floor(ms / (1000 * 60 * 60));
+                                            const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                                            if (hours > 0) return `${hours}h ${minutes}m`;
+                                            return `${minutes}m`;
+                                        };
+
+                                        const isExpanded = expandedUserId === user.id;
+
+                                        return (
+                                            <>
+                                                <tr
+                                                    key={user.id}
+                                                    onClick={() => toggleUserExpand(user.id)}
+                                                    className="hover:bg-white/5 transition-colors group cursor-pointer"
+                                                >
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            {isExpanded ? (
+                                                                <ChevronUp className="w-4 h-4 text-gray-400" />
+                                                            ) : (
+                                                                <ChevronDown className="w-4 h-4 text-gray-400" />
+                                                            )}
+                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-900 flex items-center justify-center border border-white/10">
+                                                                <span className="text-xs font-bold">{user.name?.[0] || user.email[0].toUpperCase()}</span>
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{user.name || 'N/A'}</div>
+                                                                <div className="text-xs text-gray-500">{user.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {user.isAdmin ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded border border-yellow-500/20 text-[10px] font-mono bg-yellow-500/10 text-yellow-400">
+                                                                <Shield className="w-3 h-3" /> ADMIN
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded border border-gray-700 text-[10px] font-mono bg-gray-800 text-gray-400">USER</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        {user.isAdmin ? (
+                                                            <span className="text-sm font-mono text-green-400">∞</span>
+                                                        ) : (
+                                                            <span className={`text-sm font-mono font-bold ${user.documentCredits === 0 ? 'text-red-400' :
+                                                                user.documentCredits === 1 ? 'text-yellow-400' :
+                                                                    'text-green-400'
+                                                                }`}>
+                                                                {user.documentCredits}/2
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        {user.isAdmin ? (
+                                                            <span className="text-xs text-gray-600 font-mono">-</span>
+                                                        ) : user.documentCredits === 0 && user.documentTimeUntilReset ? (
+                                                            <span className="text-xs text-red-400 font-mono">
+                                                                {formatTimeRemaining(user.documentTimeUntilReset)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-600 font-mono">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        {user.isAdmin ? (
+                                                            <span className="text-sm font-mono text-green-400">∞</span>
+                                                        ) : (
+                                                            <span className={`text-sm font-mono font-bold ${user.interviewCredits === 0 ? 'text-red-400' :
+                                                                user.interviewCredits === 1 ? 'text-yellow-400' :
+                                                                    'text-green-400'
+                                                                }`}>
+                                                                {user.interviewCredits}/2
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        {user.isAdmin ? (
+                                                            <span className="text-xs text-gray-600 font-mono">-</span>
+                                                        ) : user.interviewCredits === 0 && user.interviewTimeUntilReset ? (
+                                                            <span className="text-xs text-red-400 font-mono">
+                                                                {formatTimeRemaining(user.interviewTimeUntilReset)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-600 font-mono">-</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+
+                                                {/* Expanded Details Row */}
+                                                {isExpanded && (
+                                                    <tr className="bg-white/5">
+                                                        <td colSpan={6} className="px-6 py-6">
+                                                            {loadingUserDetails ? (
+                                                                <div className="flex items-center justify-center py-8">
+                                                                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                                                                </div>
+                                                            ) : userDetails ? (
+                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                                    <div>
+                                                                        <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                                                            <FileText className="w-4 h-4 text-purple-400" />
+                                                                            Documents ({userDetails.analyses?.length || 0})
+                                                                        </h4>
+                                                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                                            {userDetails.analyses?.length > 0 ? (
+                                                                                userDetails.analyses.map((analysis: any) => (
+                                                                                    <div key={analysis.id} className="bg-black/40 border border-white/10 rounded-lg p-3">
+                                                                                        <div className="flex items-center justify-between mb-1">
+                                                                                            <span className="text-xs font-medium text-white truncate">{analysis.repository.name}</span>
+                                                                                            <span className={`text-[9px] px-2 py-0.5 rounded-full ${analysis.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                                                                                                }`}>
+                                                                                                {analysis.status}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div className="text-[10px] text-gray-500 font-mono">
+                                                                                            {new Date(analysis.createdAt).toLocaleString()}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="text-xs text-gray-600 text-center py-4">No documents generated</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                                                            <MessageSquare className="w-4 h-4 text-indigo-400" />
+                                                                            Interviews ({userDetails.interviews?.length || 0})
+                                                                        </h4>
+                                                                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                                            {userDetails.interviews?.length > 0 ? (
+                                                                                userDetails.interviews.map((interview: any) => (
+                                                                                    <div key={interview.id} className="bg-black/40 border border-white/10 rounded-lg p-3">
+                                                                                        <div className="flex items-center justify-between mb-1">
+                                                                                            <span className="text-xs font-medium text-white truncate">{interview.repository.name}</span>
+                                                                                            <span className={`text-[9px] px-2 py-0.5 rounded-full ${interview.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                                                                                                }`}>
+                                                                                                {interview.status}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div className="text-[10px] text-gray-500 font-mono">
+                                                                                            {new Date(interview.createdAt).toLocaleString()}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))
+                                                                            ) : (
+                                                                                <div className="text-xs text-gray-600 text-center py-4">No interviews conducted</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-xs text-gray-600 text-center py-4">Failed to load user details</div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

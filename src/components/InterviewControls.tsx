@@ -423,7 +423,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
 
                         <h3 className="text-2xl font-bold text-white mb-3">Ready to Start</h3>
                         <p className="text-neutral-500 text-sm leading-relaxed mb-4">
-                            The AI has analyzed your repository context. Click "Start Interview" to begin your 5-minute technical screening.
+                            The AI has analyzed your repository context. Click "Start Interview" to begin your 2-minute technical screening.
                         </p>
                     </motion.div>
                 ) : status === "active" || status === "getting_token" || status === "connecting" || status === "summarizing" ? (

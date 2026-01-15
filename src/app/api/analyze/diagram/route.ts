@@ -22,8 +22,12 @@ export async function POST(request: Request) {
 
         console.log(`Generating separate diagram: ${diagramType}`);
 
-        if (!context || !diagramType) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        if (!diagramType) {
+            return NextResponse.json({ error: "Missing diagram type" }, { status: 400 });
+        }
+
+        if (!context || context.trim() === "") {
+            return NextResponse.json({ error: "Missing context. Please ensure repository files have been analyzed first." }, { status: 400 });
         }
 
         const safeRepoName = (repoName || "unknown_repo").replace(/[^a-zA-Z0-9-_]/g, '_');

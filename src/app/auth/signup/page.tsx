@@ -6,6 +6,8 @@ import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Lock, User, Loader2, Terminal, Code2 } from "lucide-react";
+import PhoneInput from "@/components/PhoneInput";
+import OTPInput from "@/components/OTPInput";
 
 // Matrix Rain Background Component
 const MatrixRain = () => {
@@ -81,9 +83,13 @@ export default function SignUpPage() {
     const router = useRouter();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const [mobile, setMobile] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showOTP, setShowOTP] = useState(false);
+    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpError, setOtpError] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,7 +100,7 @@ export default function SignUpPage() {
             const res = await fetch("/api/auth/signup", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ name, email, mobile, password }),
             });
 
             const data = await res.json();
@@ -105,23 +111,61 @@ export default function SignUpPage() {
                 return;
             }
 
-            // Auto sign in after successful signup
+            // Show OTP input instead of auto-redirecting
+            setLoading(false);
+            setShowOTP(true);
+        } catch (error) {
+            setError("Something went wrong");
+            setLoading(false);
+        }
+    };
+
+    const handleOTPComplete = async (otp: string) => {
+        setOtpLoading(true);
+        setOtpError("");
+
+        try {
+            const res = await fetch("/api/auth/verify-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, otp }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setOtpError(data.error || "Invalid verification code");
+                setOtpLoading(false);
+                return;
+            }
+
+            // Sign in after successful verification
             const result = await signIn("credentials", {
-                email,
+                identifier: email,
                 password,
                 redirect: false,
             });
 
             if (result?.error) {
-                setError("Account created but sign in failed. Please try signing in.");
+                setOtpError("Verified but sign in failed. Please try signing in.");
+                setOtpLoading(false);
             } else {
                 router.push("/dashboard");
-                router.refresh();
             }
         } catch (error) {
-            setError("Something went wrong");
-        } finally {
-            setLoading(false);
+            setOtpError("Something went wrong");
+            setOtpLoading(false);
+        }
+    };
+
+    const handleResendOTP = async () => {
+        try {
+            await fetch("/api/auth/resend-verification", {
+                method: "POST",
+            });
+            setOtpError("");
+        } catch (error) {
+            console.error("Failed to resend OTP");
         }
     };
 
@@ -141,148 +185,181 @@ export default function SignUpPage() {
             {/* Vignette */}
             <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/50 via-transparent to-zinc-950/50 pointer-events-none"></div>
 
+            {/* Form Container */}
             <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="w-full max-w-md relative z-10"
+                className="relative z-10 w-full max-w-md"
             >
-                <div className="bg-black/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-                    {/* Header */}
-                    <motion.div
-                        className="text-center mb-8"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <Code2 className="w-8 h-8 text-cyan-400" />
-                            <h1 className="text-3xl font-bold text-white">Create Account</h1>
-                        </div>
-                        <p className="text-white/50 text-sm">Join GitDoc to start documenting your projects</p>
-                    </motion.div>
-
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Error Message */}
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm"
-                            >
-                                {error}
-                            </motion.div>
-                        )}
-
-                        {/* Name Field */}
+                {showOTP ? (
+                    /* OTP Verification */
+                    <div className="bg-black/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+                        <OTPInput
+                            onComplete={handleOTPComplete}
+                            onResend={handleResendOTP}
+                            email={email}
+                            loading={otpLoading}
+                            error={otpError}
+                            expiresIn={900}
+                        />
+                    </div>
+                ) : (
+                    /* Signup Form */
+                    <div className="bg-black/60 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+                        {/* Header */}
                         <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 }}
-                        >
-                            <label className="block text-sm font-medium text-white/70 mb-2">
-                                Name
-                            </label>
-                            <div className="relative group">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
-                                    placeholder="John Doe"
-                                    required
-                                />
-                            </div>
-                        </motion.div>
-
-                        {/* Email Field */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            <label className="block text-sm font-medium text-white/70 mb-2">
-                                Email
-                            </label>
-                            <div className="relative group">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
-                                    placeholder="you@example.com"
-                                    required
-                                />
-                            </div>
-                        </motion.div>
-
-                        {/* Password Field */}
-                        <motion.div
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.5 }}
-                        >
-                            <label className="block text-sm font-medium text-white/70 mb-2">
-                                Password
-                            </label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
-                                    placeholder="••••••••"
-                                    required
-                                    minLength={6}
-                                />
-                            </div>
-                            <p className="text-xs text-white/40 mt-1.5">Minimum 6 characters</p>
-                        </motion.div>
-
-                        {/* Submit Button */}
-                        <motion.button
-                            type="submit"
-                            disabled={loading}
-                            initial={{ opacity: 0, y: 10 }}
+                            className="text-center mb-8"
+                            initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            whileHover={{ scale: loading ? 1 : 1.02 }}
-                            whileTap={{ scale: loading ? 1 : 0.98 }}
-                            className="w-full bg-white text-black font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:hover:shadow-none"
+                            transition={{ delay: 0.2 }}
                         >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Creating account...
-                                </>
-                            ) : (
-                                <>
-                                    <Terminal className="w-5 h-5" />
-                                    Sign Up
-                                </>
-                            )}
-                        </motion.button>
-                    </form>
+                            <div className="flex items-center justify-center gap-2 mb-4">
+                                <Code2 className="w-8 h-8 text-cyan-400" />
+                                <h1 className="text-3xl font-bold text-white">Create Account</h1>
+                            </div>
+                            <p className="text-white/50 text-sm">Join GitDoc to start documenting your projects</p>
+                        </motion.div>
 
-                    {/* Footer */}
-                    <motion.div
-                        className="mt-6 text-center"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.7 }}
-                    >
-                        <p className="text-white/50 text-sm">
-                            Already have an account?{" "}
-                            <Link href="/auth/signin" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors relative group">
-                                Sign in
-                                <span className="absolute -bottom-0.5 left-0 w-0 h-[1px] bg-cyan-400 transition-all group-hover:w-full"></span>
-                            </Link>
-                        </p>
-                    </motion.div>
-                </div>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            {/* Error Message */}
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm"
+                                >
+                                    {error}
+                                </motion.div>
+                            )}
+
+                            {/* Name Field */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3 }}
+                            >
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    Name
+                                </label>
+                                <div className="relative group">
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+                                    <input
+                                        type="text"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
+                                        placeholder="John Doe"
+                                        required
+                                    />
+                                </div>
+                            </motion.div>
+
+                            {/* Email Field */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.4 }}
+                            >
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    Email
+                                </label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+                                    <input
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
+                                        placeholder="you@example.com"
+                                        required
+                                    />
+                                </div>
+                            </motion.div>
+
+                            {/* Mobile Field */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.45 }}
+                            >
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    Mobile Number
+                                </label>
+                                <PhoneInput
+                                    value={mobile}
+                                    onChange={setMobile}
+                                    placeholder="Enter phone number"
+                                    required
+                                />
+                            </motion.div>
+
+                            {/* Password Field */}
+                            <motion.div
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.5 }}
+                            >
+                                <label className="block text-sm font-medium text-white/70 mb-2">
+                                    Password
+                                </label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+                                    <input
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
+                                        placeholder="••••••••"
+                                        required
+                                        minLength={6}
+                                    />
+                                </div>
+                                <p className="text-xs text-white/40 mt-1.5">Minimum 6 characters</p>
+                            </motion.div>
+
+                            {/* Submit Button */}
+                            <motion.button
+                                type="submit"
+                                disabled={loading}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6 }}
+                                whileHover={{ scale: loading ? 1 : 1.02 }}
+                                whileTap={{ scale: loading ? 1 : 0.98 }}
+                                className="w-full bg-white text-black font-semibold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:hover:shadow-none"
+                            >
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Creating account...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Terminal className="w-5 h-5" />
+                                        Sign Up
+                                    </>
+                                )}
+                            </motion.button>
+                        </form>
+
+                        {/* Footer */}
+                        <motion.div
+                            className="mt-6 text-center"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.7 }}
+                        >
+                            <p className="text-white/50 text-sm">
+                                Already have an account?{" "}
+                                <Link href="/auth/signin" className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors relative group">
+                                    Sign in
+                                    <span className="absolute -bottom-0.5 left-0 w-0 h-[1px] bg-cyan-400 transition-all group-hover:w-full"></span>
+                                </Link>
+                            </p>
+                        </motion.div>
+                    </div>
+                )}
             </motion.div>
         </div>
     );

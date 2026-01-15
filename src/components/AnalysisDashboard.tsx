@@ -81,11 +81,23 @@ export default function AnalysisDashboard() {
             if (analysis.fileContext) {
                 try {
                     const parsedFileContext = JSON.parse(analysis.fileContext);
-                    setFileAnalyses(parsedFileContext);
+                    // Ensure it's an array
+                    if (Array.isArray(parsedFileContext)) {
+                        setFileAnalyses(parsedFileContext);
+                        console.log(`Restored ${parsedFileContext.length} file analyses`);
+                    } else {
+                        console.warn("fileContext is not an array, setting empty");
+                        setFileAnalyses([]);
+                    }
                 } catch (e) {
-                    // If not JSON, it might be the old format - create basic structure
+                    console.error("Failed to parse fileContext:", e);
+                    // If not JSON, it might be the old format - set empty and log warning
+                    console.warn("fileContext appears to be in old format (aggregated string). Setting empty array.");
                     setFileAnalyses([]);
                 }
+            } else {
+                console.warn("No fileContext found in analysis");
+                setFileAnalyses([]);
             }
 
             // Parse and restore architecture context (contains textual, structure, visuals)
@@ -258,6 +270,13 @@ export default function AnalysisDashboard() {
 
     // --- NEW: SINGLE DIAGRAM GENERATION ---
     const handleGenerateDiagram = async (diagramType: string) => {
+        // Validate that we have file analyses before attempting diagram generation
+        if (!fileAnalyses || fileAnalyses.length === 0) {
+            setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "error" } }));
+            setError("Please analyze a repository first before generating diagrams");
+            return;
+        }
+
         setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "loading" } }));
 
         try {
@@ -266,7 +285,7 @@ export default function AnalysisDashboard() {
             const res = await fetch("/api/analyze/diagram", {
                 method: "POST",
                 body: JSON.stringify({
-                    repoName: repoDetails.html_url || repoDetails.full_name,
+                    repoName: repoDetails?.html_url || repoDetails?.full_name || "unknown",
                     context: aggregatedContext,
                     diagramType: diagramType
                 })
@@ -281,6 +300,9 @@ export default function AnalysisDashboard() {
                 }));
             } else {
                 setDiagramStates(prev => ({ ...prev, [diagramType]: { status: "error" } }));
+                if (data.error) {
+                    setError(data.error);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -292,7 +314,32 @@ export default function AnalysisDashboard() {
     const runDraftingStep = async () => {
         try {
             setStepStatus("generating");
-            setScanFile("Drafting Chapter 3...");
+            setProgress(0);
+            setScanFile("Initializing Chapter 3 generation...");
+
+            // Simulate progress while API call is running
+            const progressInterval = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 90) return 90; // Cap at 90% until API completes
+                    return prev + 2; // Increment by 2% every interval
+                });
+            }, 300); // Update every 300ms
+
+            // Update status messages based on progress
+            const statusInterval = setInterval(() => {
+                setProgress(current => {
+                    if (current < 30) {
+                        setScanFile("Analyzing visual requirements...");
+                    } else if (current < 60) {
+                        setScanFile("Generating Chapter 3 content...");
+                    } else if (current < 90) {
+                        setScanFile("Finalizing diagrams and layout...");
+                    } else {
+                        setScanFile("Almost done...");
+                    }
+                    return current;
+                });
+            }, 2000); // Update status every 2 seconds
 
             // Prepare "Generated Diagrams" map with both URL and code
             const generatedMap: Record<string, { url: string, code: string }> = {};
@@ -309,7 +356,7 @@ export default function AnalysisDashboard() {
                 method: "POST",
                 body: JSON.stringify({
                     repoUrl: originalRepoUrl,
-                    fileAnalyses: fileAnalyses, // Send context for Step 3 drafting
+                    fileAnalyses: fileAnalyses,
                     step: 3,
                     customImages: customImages,
                     generatedDiagrams: generatedMap,
@@ -317,15 +364,28 @@ export default function AnalysisDashboard() {
                 })
             });
 
+            // Clear intervals
+            clearInterval(progressInterval);
+            clearInterval(statusInterval);
+
             if (!res.ok) throw new Error("Drafting failed");
+
+            // Complete progress
+            setProgress(100);
+            setScanFile("Chapter 3 completed!");
 
             const data = await res.json();
             setContext(prev => ({ ...prev, visuals: data.result }));
+
+            // Small delay to show 100% before transitioning
+            await new Promise(r => setTimeout(r, 500));
             setStepStatus("complete");
 
         } catch (e: any) {
             setError(e.message || "Failed to generate draft");
             setStepStatus("idle");
+            setProgress(0);
+            setScanFile("");
         }
     };
 
@@ -720,10 +780,11 @@ export default function AnalysisDashboard() {
                                     <div className="flex justify-end pt-8 border-t border-white/10">
                                         <button
                                             onClick={runDraftingStep}
-                                            className="px-10 py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-2xl text-white font-bold text-xl flex items-center gap-3 shadow-xl hover:shadow-purple-500/25 transition-all transform hover:-translate-y-1 hover:scale-105"
+                                            disabled={stepStatus === "generating"}
+                                            className="px-10 py-5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-2xl text-white font-bold text-xl flex items-center gap-3 shadow-xl hover:shadow-purple-500/25 transition-all transform hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-none"
                                         >
                                             <BrainCircuit className="w-6 h-6" />
-                                            Draft Chapter 3 Now
+                                            {stepStatus === "generating" ? "Generating..." : "Draft Chapter 3 Now"}
                                         </button>
                                     </div>
                                 </div>

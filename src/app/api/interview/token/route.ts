@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { checkCredits, consumeCredit } from "@/lib/credits";
 
 export async function POST(request: Request) {
     try {
@@ -10,6 +11,24 @@ export async function POST(request: Request) {
         // Get user session
         const session = await getServerSession(authOptions);
         const userId = session?.user ? (session.user as any).id : null;
+
+        // Check if user has interview credits available (only for authenticated users)
+        if (userId) {
+            const creditCheck = await checkCredits(userId, "interview");
+
+            if (!creditCheck.hasCredits) {
+                const timeUntilReset = creditCheck.resetAt
+                    ? Math.ceil((creditCheck.resetAt.getTime() - Date.now()) / (1000 * 60 * 60))
+                    : 0;
+
+                return NextResponse.json({
+                    error: "No interview credits available",
+                    creditsExhausted: true,
+                    timeUntilReset: timeUntilReset,
+                    resetAt: creditCheck.resetAt
+                }, { status: 403 });
+            }
+        }
 
         // Parse repository name from URL
         let repoName = repoNameInput;
@@ -53,6 +72,12 @@ export async function POST(request: Request) {
                 architectureContext: architectureContext
             }
         });
+
+        // Consume an interview credit after successful interview creation (only for authenticated users)
+        if (userId) {
+            await consumeCredit(userId, "interview");
+        }
+
 
         // 3. Construct the System Instructions for the Interviewer
         const instructions = `

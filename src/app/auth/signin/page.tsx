@@ -79,7 +79,7 @@ const FloatingCode = () => {
 
 export default function SignInPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
+    const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -91,13 +91,13 @@ export default function SignInPage() {
 
         try {
             const result = await signIn("credentials", {
-                email,
+                identifier,
                 password,
                 redirect: false,
             });
 
             if (result?.error) {
-                setError("Invalid email or password");
+                setError("Invalid credentials");
             } else {
                 router.push("/dashboard");
                 router.refresh();
@@ -165,16 +165,16 @@ export default function SignInPage() {
                             transition={{ delay: 0.3 }}
                         >
                             <label className="block text-sm font-medium text-white/70 mb-2">
-                                Email
+                                Email or Mobile Number
                             </label>
                             <div className="relative group">
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
                                 <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    type="text"
+                                    value={identifier}
+                                    onChange={(e) => setIdentifier(e.target.value)}
                                     className="w-full pl-10 pr-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.05] transition-all"
-                                    placeholder="you@example.com"
+                                    placeholder="you@example.com or +1234567890"
                                     required
                                 />
                             </div>

@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileText, MessageSquare, Calendar, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import CreditDisplay from "./CreditDisplay";
+import EmailVerificationBanner from "./EmailVerificationBanner";
 
 export default function UserDashboard() {
     const { data: session, status } = useSession();
@@ -13,6 +15,7 @@ export default function UserDashboard() {
     const [analyses, setAnalyses] = useState<any[]>([]);
     const [interviews, setInterviews] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [creditStatus, setCreditStatus] = useState<any>(null);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -24,16 +27,19 @@ export default function UserDashboard() {
 
     const fetchData = async () => {
         try {
-            const [analysesRes, interviewsRes] = await Promise.all([
+            const [analysesRes, interviewsRes, creditsRes] = await Promise.all([
                 fetch("/api/user/analyses"),
-                fetch("/api/user/interviews")
+                fetch("/api/user/interviews"),
+                fetch("/api/user/credits")
             ]);
 
             const analysesData = await analysesRes.json();
             const interviewsData = await interviewsRes.json();
+            const creditsData = await creditsRes.json();
 
             setAnalyses(analysesData.analyses || []);
             setInterviews(interviewsData.interviews || []);
+            setCreditStatus(creditsData);
         } catch (error) {
             console.error("Failed to fetch data:", error);
         } finally {
@@ -95,15 +101,30 @@ export default function UserDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-12 border-b border-white/10 pb-8"
                 >
-                    <h1 className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Command Center</h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                            Command Center
+                        </h1>
+                        {(session.user as any)?.emailVerified && (
+                            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/30 rounded-full px-3 py-1">
+                                <CheckCircle className="w-4 h-4 text-green-400" />
+                                <span className="text-xs font-medium text-green-400">Verified</span>
+                            </div>
+                        )}
+                    </div>
                     <p className="text-gray-500 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         Welcome back, <span className="text-white font-mono">{session.user?.name || session.user?.email}</span>
                     </p>
                 </motion.div>
 
+                {/* Email Verification Banner */}
+                {session?.user && !(session.user as any).emailVerified && (
+                    <EmailVerificationBanner userEmail={(session.user as any).email} />
+                )}
+
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -159,6 +180,17 @@ export default function UserDashboard() {
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* Credit Display Card */}
+                    {!creditStatus?.isAdmin && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.3 }}
+                        >
+                            <CreditDisplay />
+                        </motion.div>
+                    )}
                 </div>
 
                 {/* Recent Documents */}
@@ -167,9 +199,23 @@ export default function UserDashboard() {
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <FileText className="w-5 h-5 text-gray-500" /> Recent Documents
                         </h2>
-                        <Link href="/" className="px-4 py-2 text-xs font-mono text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/10 transition-colors flex items-center gap-2">
-                            + CREATE NEW
-                        </Link>
+                        {creditStatus?.isAdmin || (creditStatus && creditStatus.documentCredits > 0) ? (
+                            <Link href="/" className="px-4 py-2 text-xs font-mono text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/10 transition-colors flex items-center gap-2">
+                                + CREATE NEW
+                            </Link>
+                        ) : (
+                            <div className="relative group">
+                                <button
+                                    disabled
+                                    className="px-4 py-2 text-xs font-mono text-gray-600 border border-gray-800 rounded-lg cursor-not-allowed flex items-center gap-2"
+                                >
+                                    + CREATE NEW
+                                </button>
+                                <div className="absolute bottom-full mb-2 right-0 hidden group-hover:block w-48 p-2 bg-black border border-red-500/30 rounded-lg text-xs text-red-400">
+                                    No document credits available
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {analyses.length === 0 ? (
@@ -222,9 +268,23 @@ export default function UserDashboard() {
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <MessageSquare className="w-5 h-5 text-gray-500" /> Recent Interviews
                         </h2>
-                        <Link href="/interview" className="px-4 py-2 text-xs font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-colors flex items-center gap-2">
-                            + START NEW
-                        </Link>
+                        {creditStatus?.isAdmin || (creditStatus && creditStatus.interviewCredits > 0) ? (
+                            <Link href="/interview" className="px-4 py-2 text-xs font-mono text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-colors flex items-center gap-2">
+                                + START NEW
+                            </Link>
+                        ) : (
+                            <div className="relative group">
+                                <button
+                                    disabled
+                                    className="px-4 py-2 text-xs font-mono text-gray-600 border border-gray-800 rounded-lg cursor-not-allowed flex items-center gap-2"
+                                >
+                                    + START NEW
+                                </button>
+                                <div className="absolute bottom-full mb-2 right-0 hidden group-hover:block w-48 p-2 bg-black border border-red-500/30 rounded-lg text-xs text-red-400">
+                                    No interview credits available
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {interviews.length === 0 ? (
