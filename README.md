@@ -19,19 +19,23 @@
 
 ### 📚 **AI-Powered Documentation Generation**
 - **4-Step Analysis Process**: Automated repository analysis with file scanning, architecture mapping, visual diagram generation, and comprehensive documentation
+- **Real-Time Progress Tracking**: Visual progress bar with dynamic status updates during Chapter 3 generation
 - **Interactive Book Reader**: Beautiful book-like interface with chapters, table of contents, and page navigation
 - **AI-Generated Diagrams**: Automatic creation of class diagrams, sequence diagrams, and architecture visualizations using Mermaid
 - **Custom Image Upload**: Upload and tag your own diagrams to complement AI-generated visuals
+- **Resume Capability**: Save and resume document generation progress anytime
 
 ### 🎤 **AI Mock Interview System**
 - **Real-Time Voice Interview**: Practice technical interviews with AI using OpenAI's Realtime API
 - **Repository Context**: AI interviewer understands your codebase and asks relevant questions
-- **5-Minute Sessions**: Timed interview sessions with automatic feedback generation
+- **2-Minute Sessions**: Quick, focused interview sessions with automatic feedback generation
 - **AI Feedback**: Receive detailed feedback on your interview performance
 
 ### 👤 **User Management**
-- **Authentication**: Secure sign-up/sign-in with NextAuth.js
+- **OTP Email Verification**: Secure 6-digit OTP-based email verification with 15-minute expiration
+- **Authentication**: Secure sign-up/sign-in with NextAuth.js (email/mobile + password)
 - **Personal Dashboard**: Track all your generated documents and interview sessions
+- **Credit System**: 2 free document generations and 2 free interviews per month
 - **Admin Panel**: Manage users and view system statistics (admin-only)
 
 ### 🎨 **Modern UI/UX**
@@ -53,7 +57,7 @@
 ### Mock Interview Flow
 1. Select repository for interview context
 2. Start real-time voice interview with AI
-3. Discuss your codebase for 5 minutes
+3. Discuss your codebase for 2 minutes
 4. Receive AI-generated feedback
 
 ---
@@ -143,6 +147,8 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
    - Generate AI diagrams (Class, Sequence, Architecture)
    - Upload custom images with tags
    - Preview all visuals before finalizing
+   - Click "Draft Chapter 3 Now" to generate visual documentation
+   - Watch real-time progress bar with status updates
 
 6. **Step 4: Final Documentation**
    - AI compiles everything into a beautiful book
@@ -163,7 +169,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
    - Real-time voice conversation begins
 
 4. **Complete Interview**
-   - 5-minute timed session
+   - 2-minute timed session
    - AI asks questions about your code
    - Automatic feedback generation
 
