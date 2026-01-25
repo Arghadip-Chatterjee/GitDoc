@@ -580,7 +580,7 @@ export default function AnalysisDashboard() {
 
                         {/* Feature Badges */}
                         <div className="flex flex-wrap justify-center gap-4 mt-8 opacity-60">
-                            {["Smart Parsing", "Visuals Generation", "PDF Export", "Code Analysis"].map((tag, i) => (
+                            {["Smart Parsing", "Visuals Generation", "Code Analysis"].map((tag, i) => (
                                 <span key={i} className="px-3 py-1 rounded-full bg-white/5 text-xs font-mono text-gray-400 border border-white/5">
                                     {tag}
                                 </span>
@@ -625,7 +625,7 @@ export default function AnalysisDashboard() {
                                 )}
                                 {stepStatus === "generating" && (
                                     currentStep === 3 ? "Drafting Architectural Visuals..." :
-                                        currentStep === 4 ? "Compiling Final Book PDF..." :
+                                        currentStep === 4 ? "Compiling Final Book..." :
                                             `Step ${currentStep}: Writing Chapter...`
                                 )}
                             </motion.h3>

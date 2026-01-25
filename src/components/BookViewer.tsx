@@ -26,7 +26,6 @@ interface BookViewerProps {
 export default function BookViewer({ bookData, repoDetails, analysisId }: BookViewerProps) {
     const [currentPage, setCurrentPage] = useState(0);
     const [showTableOfContents, setShowTableOfContents] = useState(false);
-    const [exportingPDF, setExportingPDF] = useState(false);
     const [exportingWord, setExportingWord] = useState(false);
 
     if (!bookData || !bookData.chapters || bookData.chapters.length === 0) {
@@ -48,32 +47,7 @@ export default function BookViewer({ bookData, repoDetails, analysisId }: BookVi
         }
     };
 
-    const exportToPDF = async () => {
-        if (!analysisId) return;
-        setExportingPDF(true);
-        try {
-            const response = await fetch('/api/export/pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ analysisId }),
-            });
-            if (!response.ok) throw new Error('PDF export failed');
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${bookData.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } catch (error) {
-            console.error('PDF export error:', error);
-            alert('Failed to export PDF');
-        } finally {
-            setExportingPDF(false);
-        }
-    };
+
 
     const exportToWord = async () => {
         if (!analysisId) return;
@@ -115,18 +89,6 @@ export default function BookViewer({ bookData, repoDetails, analysisId }: BookVi
                 {/* Export Buttons */}
                 {analysisId && (
                     <div className="flex gap-3 justify-center mt-6">
-                        <button
-                            onClick={exportToPDF}
-                            disabled={exportingPDF}
-                            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors shadow-lg"
-                        >
-                            {exportingPDF ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <Download size={20} />
-                            )}
-                            {exportingPDF ? 'Generating PDF...' : 'Download PDF'}
-                        </button>
                         <button
                             onClick={exportToWord}
                             disabled={exportingWord}
