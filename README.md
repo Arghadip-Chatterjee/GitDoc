@@ -3,13 +3,10 @@
 <div align="center">
 
 ![GitDoc Banner](https://img.shields.io/badge/GitDoc-AI%20Documentation-purple?style=for-the-badge)
-[![Next.js](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma)](https://www.prisma.io/)
 
 **Transform your GitHub repositories into beautiful, interactive documentation books with AI**
 
-[Features](#features) • [Demo](#demo) • [Installation](#installation) • [Usage](#usage) • [Tech Stack](#tech-stack)
+Live Link - https://git-doc-pink.vercel.app/
 
 </div>
 
@@ -295,36 +292,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **OpenAI** - For GPT-4 and Realtime API
-- **Vercel** - For Next.js and deployment platform
-- **Cloudinary** - For image storage and optimization
-- **Prisma** - For the amazing ORM
-- **Aceternity UI** - For beautiful UI components
-
----
 
 ## 📧 Contact
 
-**Project Maintainer** - Your Name
+**Project Maintainer** - Arghadip Chatterjee 
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+- Email: arghadipchatterjee2016@gmail.com
 
-**Project Link**: [https://github.com/yourusername/GitDoc](https://github.com/yourusername/GitDoc)
 
 ---
 
 <div align="center">
 
-**Made with ❤️ and AI**
+**Made with ❤️ by Arghadip**
 
 ⭐ Star this repo if you find it helpful!
 
