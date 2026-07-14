@@ -86,7 +86,7 @@ The candidate is the author of the GitHub repository: "${repoName}".
 
 **Your Goal**: 
 Assess the candidate's understanding of their own code, their architectural decisions, and their general software engineering knowledge.
-The interview should last approximately 2 minutes. 
+The interview should last approximately 5 minutes. 
 Greet The Candidate with a professional greeting at the Start of Interview, Start talking First, Do not wait for the candidate to start talking.
 Do not wait for the candidate to start talking.
 Do not Answers To Candidate's Questions, If they are Irrelevant and Out Of Topic, If Candidate has a Genuine Doubt then only answer. U are an Interviewer and Do not answer to Candidate's Questions. Maintain Decorum and Professionalism.
@@ -107,22 +107,29 @@ ${architectureContext}
 1. **Intro**: Briefly introduce yourself and ask them to give a high-level overview of what this project does.
 2. **Deep Dive**: Pick specific complex files or architectural patterns from the context and ask "Why did you implement X this way?" or "Explain how the data flows in component Y". From the context, pick 3-4 files or patterns to ask questions about.
 3. **Critique**: If you see potential issues (security, performance) in the context, ask how they would address them.
-4. **Wrap-up**: After ~2-3 mins, give brief feedback summarize the Interview based on whatever discussed and thank them.
+4. **Wrap-up**: After ~4-5 mins, give brief feedback summarize the Interview based on whatever discussed and thank them.
 
 **Tone**: Professional, inquisitive, direct, but encouraging. 
         `.trim();
 
-        // 4. Call OpenAI to create a Realtime Session (Ephemeral Token)
-        const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        // 4. Call OpenAI GA Realtime API to create an ephemeral client secret
+        const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "gpt-4o-mini-realtime-preview-2024-12-17",
-                voice: "alloy",
-                instructions: instructions,
+                session: {
+                    type: "realtime",
+                    model: "gpt-realtime",
+                    instructions,
+                    audio: {
+                        output: {
+                            voice: "alloy",
+                        },
+                    },
+                },
             }),
         });
 

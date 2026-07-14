@@ -13,7 +13,7 @@ interface InterviewControlsProps {
 
 export default function InterviewControls({ repoName, fileContext, architectureContext, onEnd }: InterviewControlsProps) {
     const [status, setStatus] = useState<"idle" | "getting_token" | "connecting" | "active" | "summarizing" | "ended" | "generating_feedback">("idle");
-    const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
+    const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
     const [isMuted, setIsMuted] = useState(false);
     const [showEndModal, setShowEndModal] = useState(false);
     const [showCloseModal, setShowCloseModal] = useState(false);
@@ -68,7 +68,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
             const responseCreateEvent = {
                 type: "response.create",
                 response: {
-                    modalities: ["audio", "text"],
+                    output_modalities: ["audio", "text"],
                 }
             };
             dataChannelRef.current.send(JSON.stringify(responseCreateEvent));
@@ -121,7 +121,13 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                 headers: { "Content-Type": "application/json" }
             });
             const data = await tokenRes.json();
-            const EPHEMERAL_KEY = data.client_secret.value;
+            if (!tokenRes.ok || data.error) {
+                throw new Error(data.error || "Failed to get interview token");
+            }
+            const EPHEMERAL_KEY = data.value;
+            if (!EPHEMERAL_KEY) {
+                throw new Error("Invalid token response from server");
+            }
 
             // Store interview ID for later use
             if (data.interviewId) {
@@ -196,18 +202,20 @@ export default function InterviewControls({ repoName, fileContext, architectureC
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            // 4. Connect to OpenAI Realtime API
-            const baseUrl = "https://api.openai.com/v1/realtime";
-            const model = "gpt-4o-mini-realtime-preview-2024-12-17";
-
-            const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
+            // 4. Connect to OpenAI GA Realtime API via WebRTC
+            const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
                 method: "POST",
                 body: offer.sdp,
                 headers: {
                     Authorization: `Bearer ${EPHEMERAL_KEY}`,
-                    "Content-Type": "application/sdp"
+                    "Content-Type": "application/sdp",
                 },
             });
+
+            if (!sdpResponse.ok) {
+                const errorText = await sdpResponse.text();
+                throw new Error(`WebRTC connection failed: ${errorText}`);
+            }
 
             const answer = {
                 type: "answer" as const,
@@ -263,7 +271,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
     const confirmEndSession = () => {
         // When user manually ends, don't generate feedback - just close
         setShowEndModal(false);
-        setFeedback("Interview ended early. Please complete the full 5-minute interview to receive AI-generated feedback.");
+        setFeedback("");
         setStatus("ended");
         // Close connections immediately
         if (peerConnectionRef.current) peerConnectionRef.current.close();
@@ -423,7 +431,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
 
                         <h3 className="text-2xl font-bold text-white mb-3">Ready to Start</h3>
                         <p className="text-neutral-500 text-sm leading-relaxed mb-4">
-                            The AI has analyzed your repository context. Click "Start Interview" to begin your 2-minute technical screening.
+                            The AI has analyzed your repository context. Click "Start Interview" to begin your 5-minute technical screening.
                         </p>
                     </motion.div>
                 ) : status === "active" || status === "getting_token" || status === "connecting" || status === "summarizing" ? (
