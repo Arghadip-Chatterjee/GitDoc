@@ -202,8 +202,8 @@ export const FAQ = () => {
 
     const faqs = [
         {
-            question: "How does GitDoc analyze my codebase?",
-            answer: "GitDoc clones your repository to a secure sandboxed environment and uses advanced AST parsing combined with LLM analysis. It builds a semantic graph of your code to understand dependencies, class structures, and business logic before generating documentation."
+            question: "How does GitFriend analyze my codebase?",
+            answer: "GitFriend clones your repository to a secure sandboxed environment and uses advanced AST parsing combined with LLM analysis. It builds a semantic graph of your code to understand dependencies, class structures, and business logic before generating documentation."
         },
         {
             question: "Is my code secure?",

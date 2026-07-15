@@ -67,7 +67,7 @@ Return ONLY a JSON object:
 
         // Upload to Cloudinary
         const uploadRes = await cloudinary.uploader.upload(mermaidImageUrl, {
-            folder: "gitdoc_generated_diagrams",
+            folder: "gitfriend_generated_diagrams",
             public_id: `${safeRepoName}_${safeDiagramType}_${Date.now()}`
         });
 

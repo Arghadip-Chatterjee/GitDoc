@@ -545,7 +545,7 @@ export default function AnalysisDashboard() {
                             </div>
                             <h2 className="text-3xl font-bold text-white mb-4">Authentication Required</h2>
                             <p className="text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-                                Join GitDoc to unlock AI-powered documentation generation, mock interviews, and advanced code analysis features.
+                                Join GitFriend to unlock AI-powered documentation generation, mock interviews, and advanced code analysis features.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                 <button

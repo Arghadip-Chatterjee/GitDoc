@@ -103,7 +103,7 @@ const MatrixRain = () => {
 export const Testimonials = () => {
     const testimonials = [
         {
-            quote: "GitDoc reverse-engineered our entire microservices architecture in seconds.",
+            quote: "GitFriend reverse-engineered our entire microservices architecture in seconds.",
             author: "Sarah Chen",
             role: "Staff Eng",
             company: "Vercel",
@@ -230,7 +230,7 @@ export const Testimonials = () => {
                     <p className="text-gray-500 max-w-md text-sm leading-relaxed mb-8">
                         See what developers are saying about their new AI-powered documentation workflow.
                         <br /><br />
-                        Join 10,000+ engineers shipping faster with GitDoc.
+                        Join 10,000+ engineers shipping faster with GitFriend.
                     </p>
                 </div>
 

@@ -37,7 +37,7 @@ async function testMermaidUpload() {
         console.log("Attempting Upload to Cloudinary...");
 
         const uploadRes = await cloudinary.uploader.upload(mermaidImageUrl, {
-            folder: "gitdoc_generated_diagrams_TEST",
+            folder: "gitfriend_generated_diagrams_TEST",
             public_id: `TEST_DIAGRAM_${Date.now()}`
         });
 

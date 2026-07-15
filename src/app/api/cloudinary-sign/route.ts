@@ -15,7 +15,7 @@ export async function POST() {
     const signature = await cloudinary.utils.api_sign_request(
         {
             timestamp: timestamp,
-            folder: 'gitdoc_uploads'
+            folder: 'gitfriend_uploads'
         },
         process.env.CLOUDINARY_API_SECRET!
     );

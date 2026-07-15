@@ -34,7 +34,7 @@ export const Navbar = () => {
                         </motion.div>
                         <span className="text-lg tracking-tight font-sans flex items-center gap-[2px]">
                             <span className="font-bold text-white tracking-tight">Git</span>
-                            <span className="font-medium text-white/50 group-hover:text-white/80 transition-colors">Doc</span>
+                            <span className="font-medium text-white/50 group-hover:text-white/80 transition-colors">Friend</span>
                         </span>
                     </Link>
 

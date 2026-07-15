@@ -17,7 +17,7 @@ export const Footer = () => {
                             <div className="p-2 bg-white/5 border border-white/10 rounded-lg group-hover:bg-white/10 transition-colors">
                                 <Command className="w-6 h-6 text-white" />
                             </div>
-                            <span className="text-2xl font-bold text-white tracking-tight">GitDoc</span>
+                            <span className="text-2xl font-bold text-white tracking-tight">GitFriend</span>
                         </Link>
                         <p className="text-gray-400 max-w-sm mb-8 leading-relaxed">
                             The intelligent platform for developer documentation and technical interview preparation. transforming repositories into knowledge bases.
@@ -45,7 +45,7 @@ export const Footer = () => {
                     <div>
                         <h4 className="font-bold text-white mb-6">Connect</h4>
                         <div className="flex gap-4 mb-6">
-                            <Link href="https://github.com/Arghadip-Chatterjee/GitDoc" className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all text-gray-400 hover:text-white">
+                            <Link href="https://github.com/Arghadip-Chatterjee/GitFriend" className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all text-gray-400 hover:text-white">
                                 <Github className="w-5 h-5" />
                             </Link>
                             {/* <Link href="#" className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all text-gray-400 hover:text-white">
@@ -62,7 +62,7 @@ export const Footer = () => {
                 </div>
 
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-center items-center gap-4 text-lg text-gray-600 mx-auto">
-                    <p>&copy; {new Date().getFullYear()} ❤️ from GitDoc . All rights reserved.</p>
+                    <p>&copy; {new Date().getFullYear()} ❤️ from GitFriend . All rights reserved.</p>
                     {/* <div className="flex gap-8">
                         <Link href="#" className="hover:text-gray-400 transition-colors">Privacy Policy</Link>
                         <Link href="#" className="hover:text-gray-400 transition-colors">Terms of Service</Link>
@@ -73,7 +73,7 @@ export const Footer = () => {
             {/* Massive Watermark */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 pointer-events-none opacity-[0.03]">
                 <h1 className="text-[20vw] font-bold text-white tracking-tighter leading-none select-none">
-                    GITDOC
+                    GITFRIEND
                 </h1>
             </div>
         </footer>

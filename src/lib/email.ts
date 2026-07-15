@@ -23,7 +23,7 @@ export async function sendVerificationEmail(
     const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
         to,
-        subject: "Verify your GitDoc email address",
+        subject: "Verify your GitFriend email address",
         html: `
             <!DOCTYPE html>
             <html>
@@ -40,7 +40,7 @@ export async function sendVerificationEmail(
                                 <!-- Header -->
                                 <tr>
                                     <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-                                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">GitDoc</h1>
+                                        <h1 style="color: #ffffff; margin: 0; font-size: 28px;">GitFriend</h1>
                                     </td>
                                 </tr>
                                 
@@ -51,7 +51,7 @@ export async function sendVerificationEmail(
                                             ${name ? `Hi ${name},` : 'Hello,'}
                                         </h2>
                                         <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                                            Thank you for signing up for GitDoc! To complete your registration, please verify your email address using the code below.
+                                            Thank you for signing up for GitFriend! To complete your registration, please verify your email address using the code below.
                                         </p>
                                         
                                         <!-- OTP Code Box -->
@@ -75,7 +75,7 @@ export async function sendVerificationEmail(
                                         </p>
                                         
                                         <p style="color: #999999; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
-                                            If you didn't create an account with GitDoc, you can safely ignore this email.
+                                            If you didn't create an account with GitFriend, you can safely ignore this email.
                                         </p>
                                         
                                         <p style="color: #999999; font-size: 12px; line-height: 1.6; margin: 20px 0 0 0; font-style: italic;">
@@ -88,7 +88,7 @@ export async function sendVerificationEmail(
                                 <tr>
                                     <td style="background-color: #f8f8f8; padding: 20px 30px; text-align: center; border-top: 1px solid #eeeeee;">
                                         <p style="color: #999999; font-size: 12px; margin: 0;">
-                                            © ${new Date().getFullYear()} GitDoc. All rights reserved.
+                                            © ${new Date().getFullYear()} GitFriend. All rights reserved.
                                         </p>
                                     </td>
                                 </tr>

@@ -218,7 +218,7 @@ export default function SignUpPage() {
                                 <Code2 className="w-8 h-8 text-cyan-400" />
                                 <h1 className="text-3xl font-bold text-white">Create Account</h1>
                             </div>
-                            <p className="text-white/50 text-sm">Join GitDoc to start documenting your projects</p>
+                            <p className="text-white/50 text-sm">Join GitFriend to start documenting your projects</p>
                         </motion.div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">

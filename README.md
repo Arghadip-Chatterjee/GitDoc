@@ -1,8 +1,8 @@
-# GitDoc - AI-Powered Repository Documentation Generator
+# GitFriend - AI-Powered Repository Documentation Generator
 
 <div align="center">
 
-![GitDoc Banner](https://img.shields.io/badge/GitDoc-AI%20Documentation-purple?style=for-the-badge)
+![GitFriend Banner](https://img.shields.io/badge/GitFriend-AI%20Documentation-purple?style=for-the-badge)
 
 **Transform your GitHub repositories into beautiful, interactive documentation books with AI**
 
@@ -70,8 +70,8 @@ Live Link - https://git-doc-pink.vercel.app/
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/GitDoc.git
-cd GitDoc
+git clone https://github.com/yourusername/GitFriend.git
+cd GitFriend
 ```
 
 ### 2. Install Dependencies
@@ -84,7 +84,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database
-DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/gitdoc"
+DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/gitfriend"
 
 # NextAuth
 NEXTAUTH_SECRET="your-nextauth-secret"
@@ -208,7 +208,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
 ## 📁 Project Structure
 
 ```
-GitDoc/
+GitFriend/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── api/               # API routes

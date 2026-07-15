@@ -15,7 +15,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "GitDoc - AI-Powered Documentation",
+  title: "GitFriend - AI-Powered Documentation",
   description: "Generate comprehensive documentation and conduct mock interviews for your GitHub repositories",
 };
 

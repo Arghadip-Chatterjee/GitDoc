@@ -37,7 +37,7 @@ export function FileUploadDemo({ onFilesChange, availableTags = [] }: FileUpload
                 formData.append("api_key", process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || "");
                 formData.append("timestamp", signData.timestamp);
                 formData.append("signature", signData.signature);
-                formData.append("folder", "gitdoc_uploads");
+                formData.append("folder", "gitfriend_uploads");
 
                 const uploadRes = await fetch(
                     `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,

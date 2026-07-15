@@ -143,7 +143,7 @@ export default function SignInPage() {
                             <Code2 className="w-8 h-8 text-cyan-400" />
                             <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
                         </div>
-                        <p className="text-white/50 text-sm">Sign in to access your GitDoc dashboard</p>
+                        <p className="text-white/50 text-sm">Sign in to access your GitFriend dashboard</p>
                     </motion.div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
