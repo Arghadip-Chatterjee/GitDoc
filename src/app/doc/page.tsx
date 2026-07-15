@@ -3,6 +3,7 @@
 import AnalysisDashboard from "@/components/AnalysisDashboard";
 import { Navbar } from "@/components/LandingPage/Navbar";
 import { motion } from "framer-motion";
+import { seededRandom } from "@/lib/seeded-random";
 
 const BackgroundAnimation = () => {
     return (
@@ -25,16 +26,16 @@ const BackgroundAnimation = () => {
                     style={{
                         width: 40,
                         height: 40,
-                        left: `${Math.floor(Math.random() * 100)}%`,
-                        top: `${Math.floor(Math.random() * 100)}%`,
+                        left: `${Math.floor(seededRandom(i, 1) * 100)}%`,
+                        top: `${Math.floor(seededRandom(i, 2) * 100)}%`,
                     }}
                     animate={{
                         opacity: [0, 1, 0],
                     }}
                     transition={{
-                        duration: Math.random() * 2 + 1,
+                        duration: seededRandom(i, 3) * 2 + 1,
                         repeat: Infinity,
-                        repeatDelay: Math.random() * 5,
+                        repeatDelay: seededRandom(i, 4) * 5,
                     }}
                 />
             ))}

@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Book, BrainCircuit } from "lucide-react";
+import { seededRandom } from "@/lib/seeded-random";
 
 const GridAnimation = () => {
-    // Generate random positions for the "active" cells
     const cells = Array.from({ length: 40 }).map((_, i) => ({
         id: i,
-        x: Math.floor(Math.random() * 80) * 24 + 1, // Align with 24px grid (approx)
-        y: Math.floor(Math.random() * 30) * 24 + 1,
-        delay: Math.random() * 5,
-        duration: 2 + Math.random() * 3
+        x: Math.floor(seededRandom(i, 1) * 80) * 24 + 1,
+        y: Math.floor(seededRandom(i, 2) * 30) * 24 + 1,
+        delay: seededRandom(i, 3) * 5,
+        duration: 2 + seededRandom(i, 4) * 3,
     }));
 
     return (
@@ -42,20 +42,18 @@ const GridAnimation = () => {
 };
 
 const ElectricBeams = () => {
-    // Horizontal beams
     const hBeams = Array.from({ length: 5 }).map((_, i) => ({
         id: `h-${i}`,
-        top: Math.floor(Math.random() * 30) * 24, // Grid aligned
-        delay: Math.random() * 5,
-        duration: 3 + Math.random() * 4
+        top: Math.floor(seededRandom(i, 10) * 30) * 24,
+        delay: seededRandom(i, 11) * 5,
+        duration: 3 + seededRandom(i, 12) * 4,
     }));
 
-    // Vertical beams
     const vBeams = Array.from({ length: 5 }).map((_, i) => ({
         id: `v-${i}`,
-        left: Math.floor(Math.random() * 60) * 24, // Grid aligned
-        delay: Math.random() * 5,
-        duration: 3 + Math.random() * 4
+        left: Math.floor(seededRandom(i, 20) * 60) * 24,
+        delay: seededRandom(i, 21) * 5,
+        duration: 3 + seededRandom(i, 22) * 4,
     }));
 
     return (

@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Lock, Loader2, Terminal, Code2 } from "lucide-react";
+import { seededRandom } from "@/lib/seeded-random";
+
+const VIEWPORT_WIDTH = 1200;
+const VIEWPORT_HEIGHT = 900;
 
 // Matrix Rain Background Component
 const MatrixRain = () => {
@@ -18,14 +22,14 @@ const MatrixRain = () => {
                         initial={{ y: -100, opacity: 0 }}
                         animate={{ y: '1000%', opacity: [0, 1, 0] }}
                         transition={{
-                            duration: Math.random() * 3 + 4,
+                            duration: seededRandom(i, 1) * 3 + 4,
                             repeat: Infinity,
-                            delay: Math.random() * 3,
+                            delay: seededRandom(i, 2) * 3,
                             ease: "linear"
                         }}
                     >
                         {Array(20).fill(0).map((_, j) => (
-                            <div key={j}>{Math.random() > 0.5 ? '1' : '0'}</div>
+                            <div key={j}>{seededRandom(i, j + 10) > 0.5 ? '1' : '0'}</div>
                         ))}
                     </motion.div>
                 ))}
@@ -56,18 +60,18 @@ const FloatingCode = () => {
                     key={i}
                     className="absolute text-xs font-mono text-blue-400"
                     initial={{
-                        x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : 0,
+                        x: seededRandom(i, 1) * VIEWPORT_WIDTH,
                         y: -50
                     }}
                     animate={{
-                        y: typeof window !== 'undefined' ? window.innerHeight + 50 : 1000,
-                        x: typeof window !== 'undefined' ? Math.random() * window.innerWidth : 0
+                        y: VIEWPORT_HEIGHT + 50,
+                        x: seededRandom(i, 2) * VIEWPORT_WIDTH
                     }}
                     transition={{
-                        duration: Math.random() * 15 + 10,
+                        duration: seededRandom(i, 3) * 15 + 10,
                         repeat: Infinity,
                         ease: "linear",
-                        delay: Math.random() * 5
+                        delay: seededRandom(i, 4) * 5
                     }}
                 >
                     {snippet}

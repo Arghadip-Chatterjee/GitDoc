@@ -5,9 +5,22 @@ import { useSession } from "next-auth/react";
 import UserNav from "../UserNav";
 import { motion } from "framer-motion";
 import { Code2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export const Navbar = () => {
     const { data: session } = useSession();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const navLinks = [
+        { href: "/", label: "Home" },
+        { href: "/doc", label: "Generator" },
+        { href: "/interview", label: "Interview" },
+        ...(mounted && session ? [{ href: "/dashboard", label: "Dashboard" }] : []),
+    ];
 
     return (
         <nav className="fixed top-0 w-full z-50 border-b border-white/[0.08] bg-black/80 backdrop-blur-xl supports-[backdrop-filter]:bg-black/60">
@@ -40,12 +53,7 @@ export const Navbar = () => {
 
                     <div className="hidden md:flex items-center gap-8">
                         {/* Navigation Links with animated indicator */}
-                        {[
-                            { href: "/", label: "Home" },
-                            { href: "/doc", label: "Generator" },
-                            { href: "/interview", label: "Interview" },
-                            ...(session ? [{ href: "/dashboard", label: "Dashboard" }] : [])
-                        ].map((link) => (
+                        {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}

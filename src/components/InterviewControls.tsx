@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Mic, MicOff, PhoneOff, Play, Loader2, Clock, Volume2, CheckCircle, BrainCircuit, Wifi, WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { seededRandom } from "@/lib/seeded-random";
 
 interface InterviewControlsProps {
     repoName: string;
@@ -460,7 +461,7 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                                                     key={i}
                                                     className="w-1.5 bg-blue-500 rounded-full"
                                                     animate={{
-                                                        height: [8, Math.random() * 24 + 8, 8],
+                                                        height: [8, seededRandom(i, 1) * 24 + 8, 8],
                                                         opacity: [0.5, 1, 0.5]
                                                     }}
                                                     transition={{

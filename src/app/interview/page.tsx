@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { analyzeRepoFiles } from "@/lib/github-loader";
 import InterviewControls from "@/components/InterviewControls";
 import { Navbar } from "@/components/LandingPage/Navbar";
+import { seededRandom } from "@/lib/seeded-random";
 
 export default function InterviewPage() {
     const router = useRouter();
@@ -113,11 +114,11 @@ export default function InterviewPage() {
                         style={{
                             width: 40,
                             height: 40,
-                            left: `${Math.floor(Math.random() * 100)}%`,
-                            top: `${Math.floor(Math.random() * 100)}%`,
+                            left: `${Math.floor(seededRandom(i, 1) * 100)}%`,
+                            top: `${Math.floor(seededRandom(i, 2) * 100)}%`,
                         }}
                         animate={{ opacity: [0, 1, 0] }}
-                        transition={{ duration: Math.random() * 3 + 2, repeat: Infinity, repeatDelay: Math.random() * 5 }}
+                        transition={{ duration: seededRandom(i, 3) * 3 + 2, repeat: Infinity, repeatDelay: seededRandom(i, 4) * 5 }}
                     />
                 ))}
             </div>
