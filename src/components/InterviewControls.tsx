@@ -242,7 +242,9 @@ export default function InterviewControls({ repoName, fileContext, architectureC
                 body: JSON.stringify({
                     transcript: transcript,
                     repoName: repoName,
-                    interviewId: interviewId
+                    interviewId: interviewId,
+                    fileContext,
+                    architectureContext,
                 })
             });
             const data = await res.json();
